@@ -24,8 +24,9 @@ DROP_COLS = [
     "notes_metaphorical_usage_construction",
 ]
 
-KWIC_HEADER_RE = re.compile(r"(?im)^\s*([a-zA-Z'-]+)\s*:\s*$")
+KWIC_HEADER_RE = re.compile(r"(?im)^\s*[a-zA-Z'-]+\s*:\s*$")
 QUOTE_SEPARATOR_RE = re.compile(r"\n\s*\n\s*\n+")
+BOLD_TERM_RE = re.compile(r"\*\*([A-Za-z'-]+)\*\*")
 
 
 def split_values(raw: str | None) -> list[str]:
@@ -35,29 +36,60 @@ def split_values(raw: str | None) -> list[str]:
     return values or [raw]
 
 
-def split_quotes(text: str) -> list[str]:
-    if not text:
-        return [text]
-    quotes = [q.strip() for q in QUOTE_SEPARATOR_RE.split(text) if q.strip()]
-    return quotes or [text]
+def word_stems(word: str) -> set[str]:
+    """Cheap suffix stripping so 'stitching'/'stitches' match 'stitch', etc."""
+    word = word.lower()
+    stems = {word}
+    for suffix in ("ing", "ed", "es", "s"):
+        if word.endswith(suffix) and len(word) - len(suffix) >= 3:
+            stem = word[: -len(suffix)]
+            stems.add(stem)
+            if len(stem) >= 2 and stem[-1] == stem[-2] and stem[-1] not in "aeiou":
+                stems.add(stem[:-1])  # doubled consonant, e.g. spinn -> spin
+    if word.endswith("ies") and len(word) - 3 >= 2:
+        stems.add(word[:-3] + "y")  # tapestries -> tapestry
+    return stems
 
 
-def split_kwic_by_word(kwic: str, words: list[str]) -> dict[str, str]:
-    """Map each word to its own kwic content, with the 'word:' header stripped.
+def match_word(bold_term: str, words: list[str]) -> str | None:
+    bold_stems = word_stems(bold_term)
+    for word in words:
+        if bold_stems & word_stems(word):
+            return word
+        if len(word) >= 4 and bold_term.lower().startswith(word.lower()):
+            return word
+    return None
 
-    Words without a matching header are absent from the result; callers
-    fall back to the full, unsplit kwic text for those.
+
+def split_kwic_chunks(kwic: str) -> list[str]:
+    """Split into individual quotes, stripping any leading 'word:' header line."""
+    chunks = [KWIC_HEADER_RE.sub("", part).strip() for part in QUOTE_SEPARATOR_RE.split(kwic)]
+    chunks = [c for c in chunks if c]
+    return chunks or [kwic]
+
+
+def assign_quotes_to_words(kwic: str, words: list[str]) -> tuple[dict[str, list[str]], list[str]]:
+    """Attribute each quote to a word via its bolded term.
+
+    Returns (quotes_by_word, unassigned). A word with no matched quote is
+    simply absent from quotes_by_word; callers fall back to the full kwic
+    text for it. Quotes without a resolvable bold term land in unassigned.
     """
-    word_set = {w.lower() for w in words if w}
-    headers = [m for m in KWIC_HEADER_RE.finditer(kwic) if m.group(1).lower() in word_set]
+    chunks = split_kwic_chunks(kwic)
+    quotes_by_word: dict[str, list[str]] = {}
+    unassigned: list[str] = []
 
-    blocks: dict[str, str] = {}
-    for i, m in enumerate(headers):
-        end = headers[i + 1].start() if i + 1 < len(headers) else len(kwic)
-        word = m.group(1).lower()
-        segment = kwic[m.end():end].strip()
-        blocks[word] = f"{blocks[word]}\n\n{segment}" if word in blocks else segment
-    return blocks
+    if len(words) == 1:
+        return {words[0].lower(): chunks}, []
+
+    for chunk in chunks:
+        bold_match = BOLD_TERM_RE.search(chunk)
+        matched_word = match_word(bold_match.group(1), words) if bold_match else None
+        if matched_word:
+            quotes_by_word.setdefault(matched_word.lower(), []).append(chunk)
+        else:
+            unassigned.append(chunk)
+    return quotes_by_word, unassigned
 
 
 def determine_note(idx: int, words: list[str], notes: list[str | None], candidates: list[str]) -> str | None:
@@ -86,22 +118,24 @@ def expand_row(row: dict[str, str]) -> list[dict[str, str]]:
     words = split_values(row.get(WORDS_COL))
     notes = split_values(row.get(NOTES_COL))
     kwic_full = row.get(KWIC_COL) or ""
-    kwic_by_word = split_kwic_by_word(kwic_full, words)
     candidates = [n.lower() for n in notes if n]
+
+    quotes_by_word, unassigned = assign_quotes_to_words(kwic_full, words)
 
     expanded = []
     for idx, word in enumerate(words):
-        if len(words) == 1:
-            kwic_text, kwic_needs_review = kwic_full, False
-        else:
-            matched = kwic_by_word.get(word.lower())
-            kwic_text, kwic_needs_review = (matched, False) if matched is not None else (kwic_full, True)
-
         note = determine_note(idx, words, notes, candidates)
+        word_quotes = quotes_by_word.get(word.lower())
 
-        for quote in split_quotes(kwic_text):
-            kwic = f"{KWIC_NEEDS_REVIEW_MARKER} {quote}" if kwic_needs_review else quote
-            expanded.append(build_row(row, word, kwic, note))
+        if word_quotes:
+            for quote in word_quotes:
+                expanded.append(build_row(row, word, quote, note))
+        else:
+            # no quote could be attributed to this word -> flag for review
+            expanded.append(build_row(row, word, f"{KWIC_NEEDS_REVIEW_MARKER} {kwic_full}", note))
+
+        for quote in unassigned:
+            expanded.append(build_row(row, word, f"{KWIC_NEEDS_REVIEW_MARKER} {quote}", note))
     return expanded
 
 
