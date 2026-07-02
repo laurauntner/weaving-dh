@@ -1,6 +1,5 @@
 """
-This script reads the enriched CSV produced by kwic_enrichment.py, filters to rows
-where include_exclude == "y", and writes a self-contained HTML dashboard.
+This script writes a self-contained HTML dashboard.
 
 """
 
@@ -27,7 +26,15 @@ for _res, _kind in [("punkt","tokenizers"),("punkt_tab","tokenizers"),
 # 0.  Configuration
 # ---------------------------------------------------------------------------
 
-CSV_PATH    = Path("../Weaving DH Data Table.csv")
+CSV_PATH       = Path("../FULL Weaving DH Data Table.csv")
+# Clean, one-row-per-occurrence textile KWIC table (already filtered to
+# include_exclude == "y"; each row = one textile word hit with its own
+# concordance snippet, no multi-word blocks / label lines to parse). Used
+# exclusively for the textile co-occurrence (Kookurrenz) and collocation /
+# concordance (Konkordanz) statistics — every other statistic in the
+# dashboard (frequencies, usage categories, sources, years, and all
+# construction-word analysis) keeps using CSV_PATH above.
+CLEAN_CSV_PATH = Path("../CLEAN Weaving DH Data Table.csv")
 OUTPUT_PATH = Path("Weaving DH Dashboard.html")
 
 TOP_N_COOC   = 5
@@ -316,11 +323,57 @@ def _accumulate_kwic_cooc(kwic_cell: str, query_words: list[str],
 # 3.  Aggregate statistics
 # ---------------------------------------------------------------------------
 
-def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None) -> dict:
-    # rows      – texts with include_exclude == "y"; everything except the
-    #             all-category/group stats below is computed from this set
-    # all_rows  – every loaded row, "y" and "n" alike; falls back to `rows`
-    #             if not given (keeps standalone calls to build_stats working)
+def _accumulate_textile_cooc_from_clean(
+        clean_rows: list[dict],
+        cooc_acc: defaultdict, colloc_acc: defaultdict,
+        year_cooc_acc: defaultdict,
+        cooc_by_cat: defaultdict, colloc_by_cat: defaultdict) -> None:
+    """
+    Populate the textile co-occurrence / collocation accumulators from the
+    clean, one-row-per-occurrence table (CLEAN_CSV_PATH). Each row already
+    represents exactly one textile-word hit with its own concordance
+    snippet, so — unlike the FULL table's multi-word KWIC cells — no
+    label-line block splitting is needed here.
+    """
+    for row in clean_rows:
+        word = row.get("textile_words", "").strip()
+        if not word:
+            continue
+        canon = textile_canonical(word)
+        kwic  = row.get("kwic_textile", "") or ""
+        year  = _parse_year(row)
+        usage_raw = _get_column_by_substr(row, "usage_textile")
+        cats = parse_usage_categories(usage_raw, TEXTILE_USAGE_VARIANTS, TEXTILE_USAGE_CATEGORIES)
+
+        cooc_counts   = _cooc_counter(kwic)
+        colloc_counts = _colloc_counter(kwic)
+
+        for lemma, cnt in cooc_counts.items():
+            cooc_acc[canon][lemma] += cnt
+            if year is not None:
+                year_cooc_acc[year][canon][lemma] += cnt
+        for lemma, cnt in colloc_counts.items():
+            colloc_acc[canon][lemma] += cnt
+
+        # Per-category co-occurrence and collocation, once per recognised
+        # category the occurrence belongs to
+        for cat in cats:
+            for lemma, cnt in cooc_counts.items():
+                cooc_by_cat[cat][canon][lemma] += cnt
+            for lemma, cnt in colloc_counts.items():
+                colloc_by_cat[cat][canon][lemma] += cnt
+
+def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
+                 clean_rows: Optional[list[dict]] = None) -> dict:
+    # rows        – texts with include_exclude == "y"; everything except the
+    #               all-category/group stats below is computed from this set
+    # all_rows    – every loaded row, "y" and "n" alike; falls back to `rows`
+    #               if not given (keeps standalone calls to build_stats working)
+    # clean_rows  – rows from the clean, one-occurrence-per-row textile KWIC
+    #               table (CLEAN_CSV_PATH); drives the textile co-occurrence
+    #               and collocation/concordance stats. Falls back to `rows`
+    #               (the FULL table, with its multi-word KWIC blocks) if not
+    #               given, so standalone calls to build_stats keep working.
     years         : list[int]   = []
     sources       : Counter     = Counter()
     source_years  : defaultdict = defaultdict(list)
@@ -452,23 +505,19 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None) -> dict
                 year_const_usage[year][cat] += 1
                 year_const_by_cat[year][CONST_USAGE_LABELS[cat]] += 1
 
-        kwic_t = row.get("kwic_textile", "") or ""
+        # Construction KWIC co-occurrence/collocation (this table has no
+        # equivalent construction columns in the clean textile table).
         kwic_c = row.get("kwic_construction", "") or ""
 
-        _accumulate_kwic_cooc(kwic_t, t_words, textile_cooc_acc, textile_colloc_acc,
-                               year, year_cooc_textile, textile_canonical)
         _accumulate_kwic_cooc(kwic_c, c_words, const_cooc_acc, const_colloc_acc,
                                year, year_cooc_const)
 
-        # Per-category co-occurrence and collocation (textile only)
-        # Accumulated once per recognised category the text belongs to
-        for cat in t_cats:
-            if kwic_t:
-                _accumulate_kwic_cooc(kwic_t, t_words,
-                                      textile_cooc_by_cat[cat],
-                                      textile_colloc_by_cat[cat],
-                                      None, defaultdict(lambda: defaultdict(Counter)),
-                                      textile_canonical)
+    # Textile co-occurrence / collocation (Kookurrenz / Konkordanz) come from
+    # the clean, one-row-per-occurrence table rather than `rows` (FULL).
+    _accumulate_textile_cooc_from_clean(
+        clean_rows if clean_rows is not None else rows,
+        textile_cooc_acc, textile_colloc_acc, year_cooc_textile,
+        textile_cooc_by_cat, textile_colloc_by_cat)
 
     # All-category and include/exclude group statistics draw on the full,
     # unfiltered row set — not just the "y" rows in `rows` above — because
@@ -1567,14 +1616,21 @@ makeUsageYear('chart-textile-usage-group-year', DATA.year_textile_usage_group, D
 def main() -> None:
     if not CSV_PATH.exists():
         sys.exit(f"ERROR: CSV not found: {CSV_PATH}")
+    if not CLEAN_CSV_PATH.exists():
+        sys.exit(f"ERROR: Clean CSV not found: {CLEAN_CSV_PATH}")
 
     print(f"Loading {CSV_PATH} …")
     all_rows = load_csv(CSV_PATH)
     rows     = filter_rows(all_rows)
     print(f"  {len(all_rows)} rows total, {len(rows)} included (include_exclude = y).")
 
+    print(f"Loading {CLEAN_CSV_PATH} …")
+    clean_rows = load_csv(CLEAN_CSV_PATH)
+    print(f"  {len(clean_rows)} textile occurrence rows "
+          f"(used for textile co-occurrence/collocation only).")
+
     print("Computing statistics …")
-    stats = build_stats(rows, all_rows)
+    stats = build_stats(rows, all_rows, clean_rows)
     print(f"  Done. {len(stats['textile_words'])} textile words, "
           f"{len(stats['const_words'])} construction words.")
 
