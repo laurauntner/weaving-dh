@@ -1,6 +1,32 @@
 """
-This script writes a self-contained HTML dashboard.
+Build a self-contained, interactive HTML dashboard on metaphorical textile
+(and construction) vocabulary in a corpus of digital-humanities journal articles.
 
+Inputs (CSV, see Configuration below):
+  * FULL table  — one row per text (article). Holds every annotation: the textile
+    and construction words found, their KWIC snippets, the per-word usage
+    categories, and the include/exclude decision. This is the source for all
+    counts except textile co-occurrence/collocation.
+  * CLEAN table — one row per textile-word occurrence, pre-filtered to the
+    included texts. Used only for the textile co-occurrence and collocation
+    statistics, where per-occurrence granularity matters.
+
+Output: a single HTML file with the computed statistics embedded as JSON and
+rendered client-side with Chart.js.
+
+Counting conventions:
+  * Rows flagged as a "doublette" in further_notes are dropped before anything
+    else, so duplicates never enter any statistic.
+  * include_exclude == "y" defines the analysed corpus.
+  * Textile usage categories are counted per category per text: within one text
+    a category is counted once, however often its words recur. The two metaphor
+    categories are restricted to included texts; the seven-category and group
+    views additionally read the excluded rows, because the non-metaphor
+    categories live almost entirely there.
+  * "Metaphorical" vs "Non-metaphorical" is a per-text partition; the headline
+    metaphor-text count equals the Metaphorical group exactly.
+  * Construction is a single presence flag — a text counts once if it contains a
+    construction word, with no sub-categories.
 """
 
 import csv
@@ -29,11 +55,9 @@ for _res, _kind in [("punkt","tokenizers"),("punkt_tab","tokenizers"),
 CSV_PATH       = Path("../FULL Weaving DH Data Table.csv")
 # Clean, one-row-per-occurrence textile KWIC table (already filtered to
 # include_exclude == "y"; each row = one textile word hit with its own
-# concordance snippet, no multi-word blocks / label lines to parse). Used
-# exclusively for the textile co-occurrence (Kookurrenz) and collocation /
-# concordance (Konkordanz) statistics — every other statistic in the
-# dashboard (frequencies, usage categories, sources, years, and all
-# construction-word analysis) keeps using CSV_PATH above.
+# concordance snippet). Used exclusively for the textile co-occurrence
+# (Kookurrenz) and collocation / concordance (Konkordanz) statistics — every
+# other statistic in the dashboard is computed from CSV_PATH above.
 CLEAN_CSV_PATH = Path("../CLEAN Weaving DH Data Table.csv")
 OUTPUT_PATH = Path("Weaving DH Dashboard.html")
 
@@ -48,15 +72,8 @@ STOPWORDS = set(stopwords.words("english")) | {
     "second", "new", "based", "see", "et", "al", "pp", "fig",
 }
 
-CONSTRUCTION_VARIANTS = {
-    "build": "building, builds, built",
-    "dig":   "digs, digging, dug",
-    "mine":  "mines, mined, mining",
-}
-
-# Canonical forms for metaphorical usage categories (case-insensitive normalisation)
+# Canonical forms for the textile metaphor usage categories (case-insensitive)
 TEXTILE_USAGE_CATEGORIES  = {"textile metaphor", "general metaphor"}
-CONST_USAGE_CATEGORIES    = {"tech jargon", "building = making", "unrelated", "build on", "other language"}
 
 # Canonical display labels (title-case) for each normalised key
 TEXTILE_USAGE_LABELS: dict[str, str] = {
@@ -88,11 +105,7 @@ TEXTILE_USAGE_GROUP_LABELS = ["Metaphorical", "Non-metaphorical"]
 # per-source breakdowns; this wider set feeds the all-category and group-level views.
 ALL_TEXTILE_USAGE_CATEGORIES = set(TEXTILE_USAGE_GROUPS.keys())
 CONST_USAGE_LABELS: dict[str, str] = {
-    "tech jargon":       "Tech Jargon",
-    "building = making": "Building = Making",
-    "unrelated":         "Unrelated",
-    "build on":          "Build on",
-    "other language":    "Other Language",
+    "construction": "Construction",
 }
 
 # Surface-form variants that normalise to a canonical category key.
@@ -105,15 +118,6 @@ TEXTILE_USAGE_VARIANTS: dict[str, str] = {
     "tech jargon":      "tech jargon",
     "unrelated":        "unrelated",
     "other language":   "other language",
-}
-CONST_USAGE_VARIANTS: dict[str, str] = {
-    "tech jargon":           "tech jargon",
-    "jargon (text mining)":  "tech jargon",
-    "building = making":     "building = making",
-    "build = making":        "building = making",
-    "unrelated":             "unrelated",
-    "build on":              "build on",
-    "other language":        "other language",
 }
 
 TEXTILE_CANONICAL: dict[str, tuple[str, list[str]]] = {
@@ -168,6 +172,14 @@ def parse_usage_categories(cell: str, variant_map: dict[str, str],
             result.add(canonical)
     return result
 
+def parse_usage_sequence(cell: str, variant_map: dict[str, str]) -> list[Optional[str]]:
+    if not cell or not cell.strip():
+        return []
+    sequence: list[Optional[str]] = []
+    for token in cell.split(","):
+        sequence.append(variant_map.get(token.strip().lower()))
+    return sequence
+
 _lemmatizer = WordNetLemmatizer()
 
 def lemmatize(word: str) -> str:
@@ -200,6 +212,12 @@ def _get_column_by_substr(row: dict, substr: str) -> str:
 
 def filter_rows(rows: list[dict]) -> list[dict]:
     return [r for r in rows if include_exclude_key(r) == "y"]
+
+def is_doublette(row: dict) -> bool:
+    return "doublette" in _get_column_by_substr(row, "further_notes").lower()
+
+def drop_doublettes(rows: list[dict]) -> list[dict]:
+    return [r for r in rows if not is_doublette(r)]
 
 def _parse_year(row: dict) -> Optional[int]:
     year_raw = row.get("pub_year", "").strip()
@@ -378,62 +396,46 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
     sources       : Counter     = Counter()
     source_years  : defaultdict = defaultdict(list)
     source_textile: defaultdict = defaultdict(int)
-    source_const  : defaultdict = defaultdict(int)
     textile_freq  : Counter     = Counter()
-    const_freq    : Counter     = Counter()
     year_textile  : defaultdict = defaultdict(Counter)
-    year_const    : defaultdict = defaultdict(Counter)
 
-    year_text_counts: Counter = Counter()  # tracks texts per year for hit-rate normalisation
+    year_text_counts: Counter = Counter()  # texts per year, used to normalise hit rates
 
     textile_cooc_acc  : defaultdict = defaultdict(Counter)
-    const_cooc_acc    : defaultdict = defaultdict(Counter)
     textile_colloc_acc: defaultdict = defaultdict(Counter)
-    const_colloc_acc  : defaultdict = defaultdict(Counter)
     year_cooc_textile : defaultdict = defaultdict(lambda: defaultdict(Counter))
-    year_cooc_const   : defaultdict = defaultdict(lambda: defaultdict(Counter))
 
-    # Counters for notes_metaphorical_usage_textile categories
-    textile_usage_counts  : Counter     = Counter()
-    # Row-level count of texts carrying at least one metaphorical category
-    # (Textile Metaphor and/or General Metaphor) — counted once per text,
-    # regardless of source, so it lines up with `total` = len(rows)
-    textile_metaphor_texts: int         = 0
-    # Same as above, but across all seven textile usage categories, i.e.
-    # including the ones outside the metaphor focus set
-    textile_usage_counts_all : Counter     = Counter()
-    # Temporal breakdown: year -> category -> count (all seven categories)
+    # Textile usage-category counters (notes_metaphorical_usage_textile).
+    # Every count below is per category per text: within a single text a category
+    # is counted at most once, however many times its words recur. The seven-category
+    # totals feed the Usage section; the per-word split feeds the Words section.
+    textile_usage_counts_all : Counter     = Counter()   # all seven categories
     year_textile_usage_all   : defaultdict = defaultdict(Counter)
-    # Group-level totals: Metaphorical vs. Non-metaphorical
+    word_textile_usage       : defaultdict = defaultdict(Counter)  # canonical word -> category -> texts
+    source_textile_by_cat    : defaultdict = defaultdict(lambda: defaultdict(int))
+
+    # Distinct texts per group, plus the headline metaphor-text count. A text is
+    # "Metaphorical" if it carries at least one metaphor category, otherwise
+    # "Non-metaphorical"; the two groups partition the texts, and
+    # textile_metaphor_texts equals the Metaphorical group exactly.
     textile_group_counts     : Counter     = Counter()
-    # Temporal breakdown: year -> group -> count
-    year_textile_group       : defaultdict = defaultdict(Counter)
-    # Counters for notes_metaphorical_usage_construction categories
+    textile_metaphor_texts   : int         = 0
+
+    # Construction is a plain presence flag: one entry per text that contains a
+    # construction word, with no sub-categories.
     const_usage_counts    : Counter     = Counter()
-    # Temporal breakdown: year -> category -> count  (textile)
-    year_textile_usage    : defaultdict = defaultdict(Counter)
-    # Temporal breakdown: year -> category -> count  (construction)
     year_const_usage      : defaultdict = defaultdict(Counter)
-    # Per-textile-word breakdown: canonical_word -> usage_category -> count
-    word_textile_usage    : defaultdict = defaultdict(Counter)
-    # Textile-metaphor texts per source, split by category: {source -> {cat_key -> count}}
-    source_textile_by_cat : defaultdict = defaultdict(lambda: defaultdict(int))
-    # Construction texts per source (text-level, not token-level)
     source_const_texts    : defaultdict = defaultdict(int)
-    # Total construction texts corpus-wide (text-level, not token-level) —
-    # counted the same way as source_const_texts above, just without the
-    # per-source split, so both numbers stay consistent with each other
     construction_texts    : int = 0
 
-    # Per-category co-occurrence and collocation accumulators (textile)
-    # Structure: {t_cat -> {canonical_word -> Counter(lemma -> count)}}
+    # Per-category co-occurrence and collocation accumulators (textile):
+    # {t_cat -> {canonical_word -> Counter(lemma -> count)}}
     textile_cooc_by_cat  : defaultdict = defaultdict(lambda: defaultdict(Counter))
     textile_colloc_by_cat: defaultdict = defaultdict(lambda: defaultdict(Counter))
 
-    # Temporal hit counts split by metaphor category for the "Distribution Over Time" charts
-    # Structure: {year -> {display_label -> count}}  (counts texts, not word tokens)
+    # Texts per year split by textile metaphor category, for the normalised
+    # "Distribution Over Time" chart. Counts texts, not word tokens.
     year_textile_by_cat: defaultdict = defaultdict(Counter)
-    year_const_by_cat  : defaultdict = defaultdict(Counter)
 
     for row in rows:
         source   = row.get("journal_title", "").strip()
@@ -450,11 +452,12 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
         t_words = parse_words(row.get("textile_words", ""))
         c_words = parse_words(row.get("construction_words", ""))
 
-        # Parse usage-category cells — each may contain multiple comma-separated values
+        # Parse the textile usage-category cell (may hold several comma-separated values).
+        # Construction is now a plain presence flag: a text counts as "construction"
+        # whenever it contains a construction word, with no usage sub-categories.
         t_usage_raw = _get_column_by_substr(row, "usage_textile")
-        c_usage_raw = _get_column_by_substr(row, "usage_construction")
         t_cats = parse_usage_categories(t_usage_raw, TEXTILE_USAGE_VARIANTS, TEXTILE_USAGE_CATEGORIES)
-        c_cats = parse_usage_categories(c_usage_raw, CONST_USAGE_VARIANTS,   CONST_USAGE_CATEGORIES)
+        c_cats = {"construction"} if c_words else set()
 
         for w in t_words:
             w = textile_canonical(w)
@@ -464,30 +467,11 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
             if source:
                 source_textile[source] += 1
 
-            # Per-word usage-category breakdown — count once per recognised category
-            for cat in t_cats:
-                word_textile_usage[w][cat] += 1
-
-        # Per-category source counts and temporal breakdown (textile, row-level, once per text)
         for cat in t_cats:
-            textile_usage_counts[cat] += 1
             if year:
-                year_textile_usage[year][cat] += 1
                 year_textile_by_cat[year][TEXTILE_USAGE_LABELS[cat]] += 1
             if source:
                 source_textile_by_cat[source][TEXTILE_USAGE_LABELS[cat]] += 1
-
-        # Once per text, regardless of how many categories or whether a source is set
-        if t_cats:
-            textile_metaphor_texts += 1
-
-        for w in c_words:
-            w = w.lower()
-            const_freq[w] += 1
-            if year:
-                year_const[year][w] += 1
-            if source:
-                source_const[source] += 1
 
         # Construction text-level count per source (once per text, only if c_words present)
         if c_words and source:
@@ -498,19 +482,12 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
         if c_words:
             construction_texts += 1
 
-        # Usage-category totals and temporal breakdown (construction, row-level)
+        # Construction presence total and temporal breakdown (one entry per text
+        # that contains a construction word; identical population to the count above)
         for cat in c_cats:
             const_usage_counts[cat] += 1
             if year:
                 year_const_usage[year][cat] += 1
-                year_const_by_cat[year][CONST_USAGE_LABELS[cat]] += 1
-
-        # Construction KWIC co-occurrence/collocation (this table has no
-        # equivalent construction columns in the clean textile table).
-        kwic_c = row.get("kwic_construction", "") or ""
-
-        _accumulate_kwic_cooc(kwic_c, c_words, const_cooc_acc, const_colloc_acc,
-                               year, year_cooc_const)
 
     # Textile co-occurrence / collocation (Kookurrenz / Konkordanz) come from
     # the clean, one-row-per-occurrence table rather than `rows` (FULL).
@@ -524,21 +501,68 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
     # the excluded usage categories (Tech Jargon, Textile Reference, Verb,
     # Unrelated, Other Language) live mostly in rows where include_exclude
     # is "n" and would otherwise never be counted at all.
+    #
+    # Counting is done per category per text, so the source is grouped by id
+    # first (one entry per text, categories de-duplicated) and only then tallied.
+    # This stays correct whether the FULL table is one row per text or is later
+    # expanded to one row per occurrence. Metaphor categories are counted only
+    # for included texts; the non-metaphor categories are counted everywhere.
     category_source_rows = all_rows if all_rows is not None else rows
     category_years: list[int] = []
+
+    # Pass 1 — aggregate each text (id) into its year, include flag, the set of
+    # categories it carries, and the (canonical word, metaphor category) pairs.
+    id_year     : dict = {}
+    id_included : dict = {}
+    id_cats     : defaultdict = defaultdict(set)
+    id_wordcats : defaultdict = defaultdict(set)
     for row in category_source_rows:
+        cid  = row.get("id", "")
         year = _parse_year(row)
         if year:
             category_years.append(year)
-        t_usage_raw = _get_column_by_substr(row, "usage_textile")
-        t_cats_all  = parse_usage_categories(t_usage_raw, TEXTILE_USAGE_VARIANTS, ALL_TEXTILE_USAGE_CATEGORIES)
-        for cat in t_cats_all:
-            textile_usage_counts_all[cat] += 1
-            grp = TEXTILE_USAGE_GROUPS.get(cat, "Non-metaphorical")
-            textile_group_counts[grp] += 1
-            if year:
-                year_textile_usage_all[year][cat] += 1
-                year_textile_group[year][grp] += 1
+            id_year[cid] = year
+        else:
+            id_year.setdefault(cid, None)
+        if include_exclude_key(row) == "y":
+            id_included[cid] = True
+        else:
+            id_included.setdefault(cid, False)
+        t_usage_seq = parse_usage_sequence(_get_column_by_substr(row, "usage_textile"), TEXTILE_USAGE_VARIANTS)
+        t_words_seq = parse_words(row.get("textile_words", ""))
+        for cat in t_usage_seq:
+            if cat is not None:
+                id_cats[cid].add(cat)
+        for word, cat in zip(t_words_seq, t_usage_seq):
+            if cat in TEXTILE_USAGE_CATEGORIES:
+                id_wordcats[cid].add((textile_canonical(word), cat))
+
+    # Pass 2 — tally one entry per text per category, and assign each text to a
+    # single group so Metaphorical/Non-metaphorical partition the corpus.
+    for cid, cats in id_cats.items():
+        year     = id_year.get(cid)
+        included = id_included.get(cid, False)
+        is_metaphorical_text = included and bool(cats & TEXTILE_USAGE_CATEGORIES)
+        for cat in cats:
+            is_metaphor = cat in TEXTILE_USAGE_CATEGORIES
+            if is_metaphor and not included:
+                continue
+            if cat in ALL_TEXTILE_USAGE_CATEGORIES:
+                textile_usage_counts_all[cat] += 1
+                if year:
+                    year_textile_usage_all[year][cat] += 1
+        if is_metaphorical_text:
+            group = "Metaphorical"
+        elif cats:
+            group = "Non-metaphorical"
+        else:
+            group = None
+        if group is not None:
+            textile_group_counts[group] += 1
+        if is_metaphorical_text:
+            textile_metaphor_texts += 1
+            for word, cat in id_wordcats[cid]:
+                word_textile_usage[word][cat] += 1
 
     year_range  = (min(years), max(years)) if years else (None, None)
     year_counts : Counter = Counter(years)
@@ -581,37 +605,18 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
         "sources"          : sources.most_common(),
         "source_years"     : {s: [min(y), max(y)] for s, y in source_years.items()},
         "source_textile"   : dict(source_textile),
-        "source_const"     : dict(source_const),
         "all_years"        : all_years,
         "year_counts"      : {y: year_counts.get(y, 0) for y in all_years},
         "year_text_counts" : {y: year_text_counts.get(y, 0) for y in all_years},
         "textile_freq"     : textile_freq.most_common(),
-        "const_freq"       : const_freq.most_common(),
         "year_textile"     : normalise_year_counts(year_textile),
-        "year_const"       : normalise_year_counts(year_const),
         "textile_cooc"     : top_cooc(textile_cooc_acc),
-        "const_cooc"       : top_cooc(const_cooc_acc),
         "textile_colloc"   : top_colloc(textile_colloc_acc),
-        "const_colloc"     : top_colloc(const_colloc_acc),
         "year_cooc_textile": normalise_year_cooc(year_cooc_textile),
-        "year_cooc_const"  : normalise_year_cooc(year_cooc_const),
         "textile_words"    : [w for w, _ in textile_freq.most_common()],
-        "const_words"      : [w for w, _ in const_freq.most_common()],
         "textile_variants" : TEXTILE_VARIANTS,
-        "const_variants"   : CONSTRUCTION_VARIANTS,
-        # --- Metaphorical usage categories (textile) ---
-        # Overall count per category (row-level, one entry per text)
-        "textile_usage_counts"      : [
-            [TEXTILE_USAGE_LABELS.get(k, k), v]
-            for k, v in textile_usage_counts.most_common()
-        ],
-        # Temporal: {year -> {display_label -> count}}
-        "year_textile_usage"        : {
-            y: {TEXTILE_USAGE_LABELS.get(cat, cat): cnt
-                for cat, cnt in cats.items()}
-            for y, cats in year_textile_usage.items()
-        },
-        # Per-word breakdown: {canonical_word -> [[display_label, count], ...]}
+        # --- Textile usage: per-word metaphor split (Words section) ---
+        # {canonical_word -> [[display_label, count], ...]}
         "word_textile_usage"        : {
             w: [[TEXTILE_USAGE_LABELS.get(cat, cat), cnt]
                 for cat, cnt in counter.most_common()]
@@ -650,18 +655,13 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
                 for cat, cnt in cats.items()}
             for y, cats in year_textile_usage_all.items()
         },
-        # --- Included vs. excluded categories, grouped ---
-        # Totals per group: Metaphorical (included) vs. Non-metaphorical (excluded)
+        # --- Metaphorical vs. Non-metaphorical group totals (Overview) ---
+        # Distinct texts per group; Metaphorical equals textile_metaphor_texts.
         "textile_usage_group_counts"    : [
             [g, textile_group_counts.get(g, 0)] for g in TEXTILE_USAGE_GROUP_LABELS
         ],
         "textile_usage_group_labels"    : TEXTILE_USAGE_GROUP_LABELS,
-        # Temporal: {year -> {group_label -> count}}
-        "year_textile_usage_group"      : {
-            y: {g: grp.get(g, 0) for g in TEXTILE_USAGE_GROUP_LABELS}
-            for y, grp in year_textile_group.items()
-        },
-        # --- Metaphorical usage categories (construction) ---
+        # --- Construction presence (single general category) ---
         "const_usage_counts"        : [
             [CONST_USAGE_LABELS.get(k, k), v]
             for k, v in const_usage_counts.most_common()
@@ -672,17 +672,12 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
             for y, cats in year_const_usage.items()
         },
         "const_usage_category_labels": [
-            CONST_USAGE_LABELS[k]
-            for k in ["tech jargon", "building = making", "unrelated", "build on", "other language"]
-            if k in CONST_USAGE_LABELS
+            CONST_USAGE_LABELS["construction"]
         ],
-        # Temporal texts-per-year split by metaphor category (for Distribution Over Time)
+        # Texts per year split by textile metaphor category (Distribution Over Time)
         # {year -> {display_label -> count}}
         "year_textile_by_cat": {
             y: dict(cat_counter) for y, cat_counter in year_textile_by_cat.items()
-        },
-        "year_const_by_cat": {
-            y: dict(cat_counter) for y, cat_counter in year_const_by_cat.items()
         },
         # --- Per-category co-occurrence and collocation (textile) ---
         # {category_key -> {word -> [[lemma, count], ...]}}
@@ -809,10 +804,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <nav>
   <ul>
     <li><a href="#overview">Overview</a></li>
-    <li><a href="#vocabulary">Vocabulary</a></li>
-    <li><a href="#usage-categories">Usage Categories</a></li>
     <li><a href="#temporal">Over Time</a></li>
-    <li><a href="#cooccurrence">Co-occurrence &amp; Collocation</a></li>
+    <li><a href="#usage">Usage</a></li>
+    <li><a href="#vocabulary">Words</a></li>
+    <li><a href="#sources">Sources</a></li>
+    <li><a href="#cooccurrence">Context</a></li>
+    <li><a href="#construction">Construction</a></li>
+    <li><a href="#methodology">Notes</a></li>
   </ul>
 </nav>
 
@@ -826,151 +824,33 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="stat-card"><div class="stat-number" id="stat-const">—</div><div class="stat-label">Construction texts</div></div>
   </div>
   <br>
-  <p class="chart-title">Sources in corpus</p>
+  <p class="subsection-title">Metaphorical vs. Non-metaphorical</p>
+  <div class="legend-inline" id="legend-textile-usage-group"></div>
+  <div class="chart-wrap">
+    <canvas id="chart-textile-usage-group-total" height="80"></canvas>
+    <p class="chart-note">Every text with a textile word is either metaphorical (Textile or General Metaphor) or non-metaphorical (Tech Jargon, Textile Reference, Verb, Unrelated, Other Language). Each text counted once.</p>
+  </div>
+  <p class="chart-title" style="margin-top:1.75rem;">Sources in corpus</p>
   <table class="source-table">
     <thead><tr><th>Source</th><th>Texts</th></tr></thead>
     <tbody id="source-tbody"></tbody>
   </table>
-  <p class="chart-note" style="margin-top:0.75rem;">
-    Corpus comprises all journal articles in which at least one textile metaphor word was identified and manually confirmed as metaphorical. Texts were fully extracted including abstracts; OCR quality was not manually verified and fuzzy OCR artefacts may affect word counts. Include/exclude decisions were made by a single annotator. Search used unlemmatised surface forms; morphological variants were added manually where relevant.
-  </p>
-  <p class="subsection-title">Textile Metaphor Texts per Source — by Category</p>
-  <div class="legend-inline" id="legend-source-textile"></div>
-  <div class="chart-wrap">
-    <canvas id="chart-source-ratio" height="120"></canvas>
-    <p class="chart-note">Texts per source in which a textile metaphor word appeared, stacked by usage category (Textile Metaphor / General Metaphor). Each text is counted once per recognised category.</p>
-  </div>
-  <p class="subsection-title">Construction Texts per Source</p>
-  <div class="chart-wrap">
-    <canvas id="chart-source-const" height="80"></canvas>
-    <p class="chart-note">Number of included texts per source that contain at least one construction word. Text-level count, not token count.</p>
-  </div>
-</section>
-
-<section id="vocabulary">
-  <p class="section-label">Vocabulary</p>
-  <h2 class="section-title">Textile &amp; Construction Words</h2>
-
-  <p class="subsection-title">Textile Words</p>
-  <p class="variants-note" id="textile-variants-note"></p>
-  <div class="chart-row">
-    <div class="chart-wrap">
-      <p class="chart-title">Frequency across corpus</p>
-      <canvas id="chart-textile-freq"></canvas>
-      <p class="chart-note">Search used unlemmatised surface forms; morphological variants (shown above) were grouped manually in post-processing.</p>
-    </div>
-    <div class="chart-wrap">
-      <p class="chart-title">Temporal distribution — select word</p>
-      <div class="tab-group" id="tabs-textile"></div>
-      <canvas id="chart-textile-word-time" height="160"></canvas>
-      <p class="chart-note">Normalised hits per text per year.</p>
-    </div>
-  </div>
-
-  <p class="subsection-title">Construction Words</p>
-  <p class="variants-note" id="const-variants-note"></p>
-  <div class="chart-row">
-    <div class="chart-wrap">
-      <p class="chart-title">Frequency across corpus</p>
-      <canvas id="chart-const-freq"></canvas>
-      <p class="chart-note">Morphological variants captured via NLTK PorterStemmer at search time; irregular forms (built, dug) normalised via an explicit lookup table. Occurrences of <em>build/built</em> + "on/upon" and <em>built-in</em> excluded as non-metaphorical. <em>Mine</em> as possessive pronoun and geological <em>mines</em> excluded.</p>
-    </div>
-    <div class="chart-wrap">
-      <p class="chart-title">Temporal distribution — select word</p>
-      <div class="tab-group" id="tabs-const"></div>
-      <canvas id="chart-const-word-time" height="160"></canvas>
-      <p class="chart-note">Normalised hits per text per year.</p>
-    </div>
-  </div>
-</section>
-
-<section id="usage-categories">
-  <p class="section-label">Classification</p>
-  <h2 class="section-title">Usage Categories</h2>
-  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1.5rem;">
-    Every text with a textile word carries a usage-category annotation, which falls into two groups:
-    <em>Metaphorical</em> (Textile Metaphor, General Metaphor) and <em>Non-metaphorical</em> (Tech Jargon,
-    Textile Reference, Verb, Unrelated, Other Language). The two group- and category-level charts just
-    below draw on the full annotated corpus (<code>include_exclude</code> = y and n), since the
-    non-metaphorical categories live mostly in texts marked <code>n</code>. The charts further down zoom
-    into the metaphorical group alone, using the same "y"-selected corpus as the rest of the dashboard.
-  </p>
-
-  <p class="subsection-title">Textile — Metaphorical vs. Non-metaphorical</p>
-  <div class="legend-inline" id="legend-textile-usage-group"></div>
-  <div class="chart-row">
-    <div class="chart-wrap">
-      <p class="chart-title">Texts per group</p>
-      <canvas id="chart-textile-usage-group-total" height="120"></canvas>
-      <p class="chart-note">Total texts per group, metaphorical vs. non-metaphorical compared directly.</p>
-    </div>
-    <div class="chart-wrap">
-      <p class="chart-title">Temporal distribution per group</p>
-      <canvas id="chart-textile-usage-group-year" height="120"></canvas>
-      <p class="chart-note">Absolute counts per year, stacked by group.</p>
-    </div>
-  </div>
-
-  <p class="subsection-title">Textile — All Usage Categories</p>
-  <div class="legend-inline" id="legend-textile-usage-all"></div>
-  <div class="chart-row">
-    <div class="chart-wrap">
-      <p class="chart-title">Texts per category</p>
-      <canvas id="chart-textile-usage-all-total" height="120"></canvas>
-      <p class="chart-note">All seven categories side by side, each text counted once per assigned category.</p>
-    </div>
-    <div class="chart-wrap">
-      <p class="chart-title">Temporal distribution</p>
-      <canvas id="chart-textile-usage-all-year" height="120"></canvas>
-      <p class="chart-note">Absolute counts per year, stacked across all seven categories.</p>
-    </div>
-  </div>
-
-  <p class="subsection-title">Textile — Metaphorical Categories Only</p>
-  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1rem;">Zoom into the metaphorical group: <em>Textile Metaphor</em> vs. <em>General Metaphor</em>.</p>
-  <div class="legend-inline" id="legend-textile-usage"></div>
-  <div class="chart-row">
-    <div class="chart-wrap">
-      <p class="chart-title">Texts per category</p>
-      <canvas id="chart-textile-usage-total" height="120"></canvas>
-      <p class="chart-note">Number of texts annotated per metaphorical usage category.</p>
-    </div>
-    <div class="chart-wrap">
-      <p class="chart-title">Temporal distribution</p>
-      <canvas id="chart-textile-usage-year" height="120"></canvas>
-      <p class="chart-note">Absolute counts per year.</p>
-    </div>
-  </div>
-
-  <p class="subsection-title">Textile — Per-Word Breakdown</p>
-  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1rem;">Distribution of the <em>Textile Metaphor</em> vs. <em>General Metaphor</em> category across individual textile words.</p>
-  <div class="chart-wrap">
-    <canvas id="chart-textile-usage-per-word" height="160"></canvas>
-    <p class="chart-note">Stacked counts per canonical textile word. Words are sorted by Textile Metaphor frequency (descending).</p>
-  </div>
-
-  <p class="subsection-title">Construction — Usage Categories</p>
-  <div class="legend-inline" id="legend-const-usage"></div>
-  <div class="chart-row">
-    <div class="chart-wrap">
-      <p class="chart-title">Texts per category</p>
-      <canvas id="chart-const-usage-total" height="120"></canvas>
-      <p class="chart-note">Number of texts annotated per construction usage category.</p>
-    </div>
-    <div class="chart-wrap">
-      <p class="chart-title">Temporal distribution</p>
-      <canvas id="chart-const-usage-year" height="120"></canvas>
-      <p class="chart-note">Absolute counts per year.</p>
-    </div>
-  </div>
 </section>
 
 <section id="temporal">
   <p class="section-label">Chronology</p>
   <h2 class="section-title">Distribution Over Time</h2>
+  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1.5rem;">
+    How the corpus and its textile-metaphor use spread across publication years. The first
+    chart is the raw number of included texts per year; the two below show, per year, the
+    rate at which textile words were used — split by metaphor category and by individual
+    word. The lower charts are normalised by the number of texts that year, so a tall bar
+    means a high rate, not simply more texts.
+  </p>
   <div class="chart-wrap">
     <p class="chart-title">Texts per year</p>
     <canvas id="chart-year-total" height="80"></canvas>
+    <p class="chart-note">Number of included texts published each year.</p>
   </div>
 
   <p class="subsection-title">Textile word hits per year</p>
@@ -987,20 +867,69 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <p class="chart-note">Hits per text per year, normalised by annual text count to account for uneven corpus distribution across years.</p>
     </div>
   </div>
+</section>
 
-  <p class="subsection-title">Construction word hits per year</p>
-  <div class="legend-inline" id="legend-temporal-const"></div>
+<section id="usage">
+  <p class="section-label">Classification</p>
+  <h2 class="section-title">How Textile Words Are Used</h2>
+  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1.5rem;">
+    Breakdown of textile-word usage into its seven categories, with the two metaphor
+    categories highlighted. Counts draw on the full annotated corpus
+    (<code>include_exclude</code> = y and n), since the non-metaphorical categories occur
+    mostly in excluded texts. Each text is counted once per category, so a text tagged both
+    Textile and General Metaphor appears in both bars — 353 distinct texts are metaphorical
+    (14 carry both metaphor types).
+  </p>
+  <div class="legend-inline" id="legend-textile-usage-all"></div>
   <div class="chart-row">
     <div class="chart-wrap">
-      <p class="chart-title">By metaphor category (normalised)</p>
-      <canvas id="chart-year-const-cat" height="160"></canvas>
-      <p class="chart-note">Texts per year in which a construction word appeared, split by usage category. Normalised by annual text count.</p>
+      <p class="chart-title">Texts per category</p>
+      <canvas id="chart-textile-usage-all-total" height="120"></canvas>
+      <p class="chart-note">All seven categories side by side, each text counted once per assigned category.</p>
     </div>
     <div class="chart-wrap">
-      <p class="chart-title">By word (normalised)</p>
-      <canvas id="chart-year-const" height="160"></canvas>
-      <p class="chart-note">Hits per text per year. Only texts that also contain textile hits were included in this corpus.</p>
+      <p class="chart-title">Temporal distribution</p>
+      <canvas id="chart-textile-usage-all-year" height="120"></canvas>
+      <p class="chart-note">Absolute counts per year, stacked across all seven categories.</p>
     </div>
+  </div>
+</section>
+
+<section id="vocabulary">
+  <p class="section-label">Vocabulary</p>
+  <h2 class="section-title">Textile Words</h2>
+  <p class="variants-note" id="textile-variants-note"></p>
+  <div class="chart-row">
+    <div class="chart-wrap">
+      <p class="chart-title">Frequency across corpus</p>
+      <canvas id="chart-textile-freq"></canvas>
+      <p class="chart-note">Search used unlemmatised surface forms; morphological variants (shown above) were grouped manually in post-processing.</p>
+    </div>
+    <div class="chart-wrap">
+      <p class="chart-title">Temporal distribution — select word</p>
+      <div class="tab-group" id="tabs-textile"></div>
+      <canvas id="chart-textile-word-time" height="160"></canvas>
+      <p class="chart-note">Normalised hits per text per year.</p>
+    </div>
+  </div>
+
+  <p class="subsection-title">Metaphor split per word</p>
+  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1rem;">How the <em>Textile Metaphor</em> vs. <em>General Metaphor</em> categories distribute across individual textile words.</p>
+  <div class="legend-inline" id="legend-textile-usage"></div>
+  <div class="chart-wrap">
+    <canvas id="chart-textile-usage-per-word" height="160"></canvas>
+    <p class="chart-note">Stacked counts per canonical textile word, sorted by Textile Metaphor frequency (descending). A text using two different textile words appears under each, so per-word totals exceed the distinct-text counts in the Usage section.</p>
+  </div>
+</section>
+
+<section id="sources">
+  <p class="section-label">Sources</p>
+  <h2 class="section-title">By Source</h2>
+  <p class="subsection-title">Textile Metaphor Texts per Source — by Category</p>
+  <div class="legend-inline" id="legend-source-textile"></div>
+  <div class="chart-wrap">
+    <canvas id="chart-source-ratio" height="120"></canvas>
+    <p class="chart-note">Texts per source in which a textile metaphor word appeared, stacked by usage category (Textile Metaphor / General Metaphor). Each text is counted once per recognised category.</p>
   </div>
 </section>
 
@@ -1013,16 +942,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <p class="chart-title" style="margin-bottom:0.75rem">Textile words</p>
   <div class="tab-group" id="tabs-cooc-textile-cat"></div>
   <div class="cooc-grid" id="cooc-textile"></div>
-  <p class="chart-title" style="margin:2rem 0 1.5rem">Construction words</p>
-  <div class="cooc-grid" id="cooc-const"></div>
 
   <p class="subsection-title">Immediate Collocations (±2 tokens)</p>
   <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1rem;">Words appearing directly adjacent to the hit token, revealing typical phrasal patterns (e.g. <em>building a corpus</em>, <em>weaving together</em>). Left and right positions are pooled.</p>
   <p class="chart-title" style="margin-bottom:0.75rem">Textile words</p>
   <div class="tab-group" id="tabs-colloc-textile-cat"></div>
   <div class="cooc-grid" id="colloc-textile"></div>
-  <p class="chart-title" style="margin:2rem 0 1.5rem">Construction words</p>
-  <div class="cooc-grid" id="colloc-const"></div>
 
   <p class="subsection-title">Temporal Co-occurrence Trend</p>
   <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1.5rem;">Co-occurrence frequency of a selected term alongside a given metaphor word, normalised per text per year.</p>
@@ -1033,13 +958,37 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div class="tab-group" id="tabs-trend-textile-lemma"></div>
       <canvas id="chart-trend-textile" height="160"></canvas>
     </div>
+  </div>
+</section>
+
+<section id="construction">
+  <p class="section-label">Comparison</p>
+  <h2 class="section-title">Construction Vocabulary</h2>
+  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1.5rem;">Construction words (build, dig, mine) are tracked only as a coarse comparison — whether a text uses one at all, with no usage sub-categories.</p>
+  <div class="chart-row">
     <div class="chart-wrap">
-      <p class="chart-title">Construction — select word, then co-occurring term</p>
-      <div class="tab-group" id="tabs-trend-const-word"></div>
-      <div class="tab-group" id="tabs-trend-const-lemma"></div>
-      <canvas id="chart-trend-const" height="160"></canvas>
+      <p class="chart-title">Texts total</p>
+      <canvas id="chart-const-usage-total" height="120"></canvas>
+      <p class="chart-note">Number of included texts that contain at least one construction word.</p>
+    </div>
+    <div class="chart-wrap">
+      <p class="chart-title">Temporal distribution</p>
+      <canvas id="chart-const-usage-year" height="120"></canvas>
+      <p class="chart-note">Construction texts per year (absolute counts).</p>
     </div>
   </div>
+  <p class="subsection-title">Construction Texts per Source</p>
+  <div class="chart-wrap">
+    <canvas id="chart-source-const" height="80"></canvas>
+    <p class="chart-note">Number of included texts per source that contain at least one construction word. Text-level count, not token count.</p>
+  </div>
+</section>
+
+<section id="methodology">
+  <h2 class="section-title">Notes</h2>
+  <p class="chart-note">
+    Corpus comprises all journal articles in which at least one textile metaphor word was identified and manually confirmed as metaphorical. Texts were fully extracted including abstracts; OCR quality was not manually verified and fuzzy OCR artefacts may affect word counts. Include/exclude decisions were made by a single annotator. Search used unlemmatised surface forms; morphological variants were added manually where relevant. Rows flagged as doublettes are excluded from all counts.
+  </p>
 </section>
 
 </div>
@@ -1066,11 +1015,7 @@ const TEXTILE_USAGE_COLORS = {
   'General Metaphor': '#93b8e0',
 };
 const CONST_USAGE_COLORS = {
-  'Tech Jargon':       '#b5451b',
-  'Building = Making': '#e08a6a',
-  'Unrelated':         '#c8c8c8',
-  'Build on':          '#7c3d99',
-  'Other Language':    '#3a8a8a',
+  'Construction':      '#b5451b',
 };
 // All seven textile usage categories: blue shades = Metaphorical,
 // warm/grey shades = Non-metaphorical
@@ -1113,9 +1058,6 @@ DATA.sources.forEach(([j,n]) => {
 });
 
 // Variants notes
-const variantParts = Object.entries(DATA.const_variants).map(([w,v])=>`${w} (incl. ${v})`);
-document.getElementById('const-variants-note').textContent =
-  'Morphological variants included: ' + variantParts.join('; ') + '.';
 const textileVariantParts = Object.entries(DATA.textile_variants).map(([w,v])=>`${w} (incl. ${v})`);
 document.getElementById('textile-variants-note').textContent =
   'Morphological variants included: ' + textileVariantParts.join('; ') + '.';
@@ -1187,7 +1129,7 @@ new Chart(document.getElementById('chart-year-total'), {
   options: { plugins:{legend:{display:false}}, scales:{ x:{grid:GRID,ticks:TICKS}, y:{grid:GRID,ticks:{...TICKS,stepSize:1},beginAtZero:true} } }
 });
 
-// ── Temporal legends (textile and construction category split) ─────
+// ── Temporal legend (textile category split) ──────────────────────
 (function(){
   const tLegend = document.getElementById('legend-temporal-textile');
   Object.entries(TEXTILE_USAGE_COLORS).forEach(([label, col]) => {
@@ -1195,13 +1137,6 @@ new Chart(document.getElementById('chart-year-total'), {
     item.className = 'legend-item';
     item.innerHTML = `<div class="legend-dot" style="background:${col}"></div>${label}`;
     tLegend.appendChild(item);
-  });
-  const cLegend = document.getElementById('legend-temporal-const');
-  Object.entries(CONST_USAGE_COLORS).forEach(([label, col]) => {
-    const item = document.createElement('div');
-    item.className = 'legend-item';
-    item.innerHTML = `<div class="legend-dot" style="background:${col}"></div>${label}`;
-    cLegend.appendChild(item);
   });
 })();
 
@@ -1231,8 +1166,6 @@ function makeCatStacked(canvasId, yearByCat, catLabels, colorMap) {
 }
 makeCatStacked('chart-year-textile-cat', DATA.year_textile_by_cat,
                DATA.textile_usage_category_labels, TEXTILE_USAGE_COLORS);
-makeCatStacked('chart-year-const-cat',   DATA.year_const_by_cat,
-               DATA.const_usage_category_labels,   CONST_USAGE_COLORS);
 
 // ── Stacked temporal by word (normalised) ─────────────────────────
 function makeStacked(canvasId, words, yearData) {
@@ -1252,7 +1185,6 @@ function makeStacked(canvasId, words, yearData) {
   });
 }
 makeStacked('chart-year-textile', DATA.textile_words, DATA.year_textile);
-makeStacked('chart-year-const',   DATA.const_words,   DATA.year_const);
 
 // ── Frequency (horizontal bar) ────────────────────────────────────
 function makeFreq(canvasId, freqData) {
@@ -1270,7 +1202,6 @@ function makeFreq(canvasId, freqData) {
   });
 }
 makeFreq('chart-textile-freq', DATA.textile_freq);
-makeFreq('chart-const-freq',   DATA.const_freq);
 
 // ── Per-word temporal with tabs (normalised) ──────────────────────
 function makeWordTime(canvasId, tabGroupId, yearData, words) {
@@ -1300,7 +1231,6 @@ function makeWordTime(canvasId, tabGroupId, yearData, words) {
   });
 }
 makeWordTime('chart-textile-word-time','tabs-textile', DATA.year_textile, DATA.textile_words);
-makeWordTime('chart-const-word-time',  'tabs-const',   DATA.year_const,   DATA.const_words);
 
 // ── Co-occurrence cards ───────────────────────────────────────────
 function renderCooc(containerId, coocData, variants) {
@@ -1325,7 +1255,6 @@ function renderCooc(containerId, coocData, variants) {
     container.appendChild(card);
   });
 }
-// Construction cooc/colloc cards rendered below in the category-tab block
 
 // ── Temporal co-occurrence trend (normalised) ─────────────────────
 function makeTrendChart(canvasId, wordTabId, lemmaTabId, yearCoocData, allYears) {
@@ -1391,8 +1320,6 @@ function makeTrendChart(canvasId, wordTabId, lemmaTabId, yearCoocData, allYears)
 
 makeTrendChart('chart-trend-textile','tabs-trend-textile-word','tabs-trend-textile-lemma',
                DATA.year_cooc_textile, DATA.all_years);
-makeTrendChart('chart-trend-const',  'tabs-trend-const-word',  'tabs-trend-const-lemma',
-               DATA.year_cooc_const,  DATA.all_years);
 
 // ── Co-occurrence category filter tabs ────────────────────────────
 // Renders category-tab switchers above the textile cooc/colloc grids.
@@ -1459,10 +1386,6 @@ makeTrendChart('chart-trend-const',  'tabs-trend-const-word',  'tabs-trend-const
   makeCatTabs('tabs-colloc-textile-cat', 'colloc-textile', DATA.textile_colloc, DATA.textile_colloc_by_cat, DATA.textile_variants);
 })();
 
-// Construction cooc/colloc cards (no category filter needed)
-renderCooc('cooc-const',   DATA.const_cooc,   DATA.const_variants);
-renderCooc('colloc-const', DATA.const_colloc, DATA.const_variants);
-
 // ── Usage category colour maps ─────────────────────────────────────
 // (defined at top of script)
 
@@ -1477,7 +1400,6 @@ function buildUsageLegend(containerId, colorMap) {
   });
 }
 buildUsageLegend('legend-textile-usage', TEXTILE_USAGE_COLORS);
-buildUsageLegend('legend-const-usage',   CONST_USAGE_COLORS);
 
 // ── Usage category total bar chart (horizontal) ───────────────────
 function makeUsageTotal(canvasId, usageCounts, colorMap) {
@@ -1502,7 +1424,6 @@ function makeUsageTotal(canvasId, usageCounts, colorMap) {
     }
   });
 }
-makeUsageTotal('chart-textile-usage-total', DATA.textile_usage_counts, TEXTILE_USAGE_COLORS);
 makeUsageTotal('chart-const-usage-total',   DATA.const_usage_counts,   CONST_USAGE_COLORS);
 
 // ── Usage category temporal stacked bar chart ─────────────────────
@@ -1529,8 +1450,6 @@ function makeUsageYear(canvasId, yearUsage, categoryLabels, colorMap, allYears) 
     }
   });
 }
-makeUsageYear('chart-textile-usage-year', DATA.year_textile_usage, DATA.textile_usage_category_labels,
-              TEXTILE_USAGE_COLORS, DATA.all_years);
 makeUsageYear('chart-const-usage-year',   DATA.year_const_usage,   DATA.const_usage_category_labels,
               CONST_USAGE_COLORS,   DATA.all_years);
 
@@ -1552,15 +1471,13 @@ makeUsageYear('chart-const-usage-year',   DATA.year_const_usage,   DATA.const_us
   });
 })();
 
-// ── All seven textile usage categories (metaphorical + excluded) ───
+// ── All seven textile usage categories (Usage section) ────────────
 makeUsageTotal('chart-textile-usage-all-total', DATA.textile_usage_counts_all, TEXTILE_ALL_CATEGORY_COLORS);
 makeUsageYear('chart-textile-usage-all-year', DATA.year_textile_usage_all, DATA.textile_usage_category_labels_all,
               TEXTILE_ALL_CATEGORY_COLORS, DATA.all_years);
 
-// ── Included vs. excluded categories — group-level comparison ──────
+// ── Metaphorical vs. Non-metaphorical group totals (Overview) ──────
 makeUsageTotal('chart-textile-usage-group-total', DATA.textile_usage_group_counts, TEXTILE_GROUP_COLORS);
-makeUsageYear('chart-textile-usage-group-year', DATA.year_textile_usage_group, DATA.textile_usage_group_labels,
-              TEXTILE_GROUP_COLORS, DATA.all_years);
 
 // ── Textile Metaphor per word — stacked horizontal bar ────────────
 (function(){
@@ -1620,9 +1537,11 @@ def main() -> None:
         sys.exit(f"ERROR: Clean CSV not found: {CLEAN_CSV_PATH}")
 
     print(f"Loading {CSV_PATH} …")
-    all_rows = load_csv(CSV_PATH)
-    rows     = filter_rows(all_rows)
-    print(f"  {len(all_rows)} rows total, {len(rows)} included (include_exclude = y).")
+    loaded_rows = load_csv(CSV_PATH)
+    all_rows    = drop_doublettes(loaded_rows)
+    rows        = filter_rows(all_rows)
+    print(f"  {len(loaded_rows)} rows total, {len(loaded_rows) - len(all_rows)} doublette rows dropped, "
+          f"{len(rows)} included (include_exclude = y).")
 
     print(f"Loading {CLEAN_CSV_PATH} …")
     clean_rows = load_csv(CLEAN_CSV_PATH)
@@ -1632,7 +1551,7 @@ def main() -> None:
     print("Computing statistics …")
     stats = build_stats(rows, all_rows, clean_rows)
     print(f"  Done. {len(stats['textile_words'])} textile words, "
-          f"{len(stats['const_words'])} construction words.")
+          f"{stats['construction_texts']} construction texts.")
 
     html = HTML_TEMPLATE.replace("__DATA_PLACEHOLDER__", json.dumps(stats, ensure_ascii=False))
     OUTPUT_PATH.write_text(html, encoding="utf-8")
