@@ -414,11 +414,12 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
     word_textile_usage       : defaultdict = defaultdict(Counter)  # canonical word -> category -> texts
     source_textile_by_cat    : defaultdict = defaultdict(lambda: defaultdict(int))
 
-    # Distinct texts per group, plus the headline metaphor-text count. A text is
-    # "Metaphorical" if it carries at least one metaphor category, otherwise
-    # "Non-metaphorical"; the two groups partition the texts, and
-    # textile_metaphor_texts equals the Metaphorical group exactly.
+    # Group totals for the Overview chart. Metaphorical counts each text once if it
+    # has any metaphor use (Textile and/or General Metaphor collapse to one, so it
+    # equals textile_metaphor_texts). Non-metaphorical counts each text once per
+    # non-metaphorical category it carries (the five categories summed).
     textile_group_counts     : Counter     = Counter()
+    # Distinct metaphorical texts (headline stat) = the Metaphorical group above.
     textile_metaphor_texts   : int         = 0
 
     # Construction is a plain presence flag: one entry per text that contains a
@@ -549,17 +550,12 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
                 continue
             if cat in ALL_TEXTILE_USAGE_CATEGORIES:
                 textile_usage_counts_all[cat] += 1
+                if not is_metaphor:
+                    textile_group_counts["Non-metaphorical"] += 1
                 if year:
                     year_textile_usage_all[year][cat] += 1
         if is_metaphorical_text:
-            group = "Metaphorical"
-        elif cats:
-            group = "Non-metaphorical"
-        else:
-            group = None
-        if group is not None:
-            textile_group_counts[group] += 1
-        if is_metaphorical_text:
+            textile_group_counts["Metaphorical"] += 1
             textile_metaphor_texts += 1
             for word, cat in id_wordcats[cid]:
                 word_textile_usage[word][cat] += 1
@@ -656,7 +652,7 @@ def build_stats(rows: list[dict], all_rows: Optional[list[dict]] = None,
             for y, cats in year_textile_usage_all.items()
         },
         # --- Metaphorical vs. Non-metaphorical group totals (Overview) ---
-        # Distinct texts per group; Metaphorical equals textile_metaphor_texts.
+        # The seven category counts summed into two groups (usage assignments, not texts).
         "textile_usage_group_counts"    : [
             [g, textile_group_counts.get(g, 0)] for g in TEXTILE_USAGE_GROUP_LABELS
         ],
@@ -828,7 +824,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="legend-inline" id="legend-textile-usage-group"></div>
   <div class="chart-wrap">
     <canvas id="chart-textile-usage-group-total" height="80"></canvas>
-    <p class="chart-note">Every text with a textile word is either metaphorical (Textile or General Metaphor) or non-metaphorical (Tech Jargon, Textile Reference, Verb, Unrelated, Other Language). Each text counted once.</p>
+    <p class="chart-note">Metaphorical counts each text once if it has any metaphor use — multiple metaphors in a text, including both Textile and General, still count once (so this equals the metaphorical-texts figure above). Non-metaphorical counts each text once per non-metaphorical category it carries (Tech Jargon, Textile Reference, Verb, Unrelated, Other Language).</p>
   </div>
   <p class="chart-title" style="margin-top:1.75rem;">Sources in corpus</p>
   <table class="source-table">
@@ -878,7 +874,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     (<code>include_exclude</code> = y and n), since the non-metaphorical categories occur
     mostly in excluded texts. Each text is counted once per category, so a text tagged both
     Textile and General Metaphor appears in both bars — 353 distinct texts are metaphorical
-    (14 carry both metaphor types).
+    (15 carry both metaphor types).
   </p>
   <div class="legend-inline" id="legend-textile-usage-all"></div>
   <div class="chart-row">
