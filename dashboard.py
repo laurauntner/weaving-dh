@@ -355,6 +355,7 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
     # Distinct texts with a Textile Metaphor use (headline stat). General
     # Metaphor and every other annotated category are not counted here.
     textile_metaphor_texts   : int = 0
+    year_textile_metaphor_texts: Counter = Counter()  # same, broken out by year
 
     # Construction is a plain presence flag: one entry per text that contains a
     # construction word, with no sub-categories.
@@ -386,6 +387,8 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
         # otherwise mentions (e.g. as Textile Reference or Verb).
         if t_cats:
             textile_metaphor_texts += 1
+            if year:
+                year_textile_metaphor_texts[year] += 1
             for w in t_words:
                 w = textile_canonical(w)
                 textile_freq[w] += 1
@@ -435,6 +438,8 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
         "all_years"        : all_years,
         "year_counts"      : {y: year_counts.get(y, 0) for y in all_years},
         "year_text_counts" : {y: year_text_counts.get(y, 0) for y in all_years},
+        # Distinct texts with a Textile Metaphor use, per year
+        "year_textile_metaphor_texts": {y: year_textile_metaphor_texts.get(y, 0) for y in all_years},
         # Textile Metaphor word frequency, corpus-wide
         "textile_freq"     : textile_freq.most_common(),
         # Absolute (not normalised) Textile Metaphor word hits per year
