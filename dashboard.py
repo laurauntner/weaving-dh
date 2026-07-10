@@ -330,20 +330,25 @@ def _accumulate_textile_cooc_from_clean(
                 year_colloc_acc[year][canon][lemma] += cnt
 
 def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> dict:
-    # rows        – texts with include_exclude == "y"; every statistic below is
-    #               computed from this set (one row per text in the FULL table)
+    # rows        – texts with include_exclude == "y" (one row per text in the FULL
+    #               table). Every statistic below — sources, year range, texts per
+    #               year, word frequencies, per-source breakdown — is computed only
+    #               from the subset of these that carry a Textile Metaphor use.
+    #               General Metaphor, every other annotated category, and texts
+    #               with no recognised category at all are excluded from every
+    #               count in this dashboard; there is no other counting basis.
     # clean_rows  – rows from the clean, one-occurrence-per-row textile KWIC
-    #               table (CLEAN_CSV_PATH); drives the textile co-occurrence
-    #               and collocation/concordance stats. Falls back to `rows`
-    #               (the FULL table, with its multi-word KWIC blocks) if not
-    #               given, so standalone calls to build_stats keep working.
+    #               table (CLEAN_CSV_PATH), already restricted to Textile Metaphor
+    #               occurrences; drives the co-occurrence and collocation stats.
+    #               Falls back to `rows` if not given, so standalone calls to
+    #               build_stats keep working.
     years         : list[int]   = []
     sources       : Counter     = Counter()
     source_years  : defaultdict = defaultdict(list)
     textile_freq  : Counter     = Counter()
     year_textile  : defaultdict = defaultdict(Counter)
 
-    year_text_counts: Counter = Counter()  # texts per year, used to normalise hit rates
+    year_text_counts: Counter = Counter()  # Textile Metaphor texts per year, used to normalise hit rates
 
     textile_cooc_acc  : defaultdict = defaultdict(Counter)
     textile_colloc_acc: defaultdict = defaultdict(Counter)
@@ -352,19 +357,29 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
 
     source_textile_by_cat : defaultdict = defaultdict(lambda: defaultdict(int))
 
-    # Distinct texts with a Textile Metaphor use (headline stat). General
-    # Metaphor and every other annotated category are not counted here.
     textile_metaphor_texts   : int = 0
-    year_textile_metaphor_texts: Counter = Counter()  # same, broken out by year
 
-    # Construction is a plain presence flag: one entry per text that contains a
-    # construction word, with no sub-categories.
+    # Construction is tracked separately across the full included corpus (not
+    # restricted to Textile Metaphor) since it is a distinct comparison
+    # vocabulary, not a textile-metaphor category; it is not displayed anywhere
+    # in the dashboard, only logged to the console.
     construction_texts    : int = 0
 
     for row in rows:
-        source   = row.get("journal_title", "").strip()
-        year     = _parse_year(row)
+        c_words = parse_words(row.get("construction_words", ""))
+        if c_words:
+            construction_texts += 1
 
+        t_usage_raw = _get_column_by_substr(row, "usage_textile")
+        t_cats = parse_usage_categories(t_usage_raw, TEXTILE_USAGE_VARIANTS, TEXTILE_USAGE_CATEGORIES)
+        if not t_cats:
+            continue  # no Textile Metaphor use: excluded from every statistic below
+
+        source = row.get("journal_title", "").strip()
+        year   = _parse_year(row)
+        t_words = parse_words(row.get("textile_words", ""))
+
+        textile_metaphor_texts += 1
         if year:
             years.append(year)
             year_text_counts[year] += 1
@@ -373,34 +388,15 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
             if year:
                 source_years[source].append(year)
 
-        t_words = parse_words(row.get("textile_words", ""))
-        c_words = parse_words(row.get("construction_words", ""))
-
-        # Parse the textile usage-category cell (may hold several comma-separated
-        # values); only Textile Metaphor is a recognised category.
-        t_usage_raw = _get_column_by_substr(row, "usage_textile")
-        t_cats = parse_usage_categories(t_usage_raw, TEXTILE_USAGE_VARIANTS, TEXTILE_USAGE_CATEGORIES)
-
-        # Word-level counts (Frequency / Distribution Over Time / By Source)
-        # only draw on texts carrying a Textile Metaphor use; a text with no
-        # such use contributes nothing here, however many textile words it
-        # otherwise mentions (e.g. as Textile Reference or Verb).
-        if t_cats:
-            textile_metaphor_texts += 1
+        for w in t_words:
+            w = textile_canonical(w)
+            textile_freq[w] += 1
             if year:
-                year_textile_metaphor_texts[year] += 1
-            for w in t_words:
-                w = textile_canonical(w)
-                textile_freq[w] += 1
-                if year:
-                    year_textile[year][w] += 1
+                year_textile[year][w] += 1
+
         for cat in t_cats:
             if source:
                 source_textile_by_cat[source][TEXTILE_USAGE_LABELS[cat]] += 1
-
-        # Total construction texts, once per text if it contains a construction word
-        if c_words:
-            construction_texts += 1
 
     # Textile co-occurrence / collocation (Kookurrenz / Konkordanz) come from
     # the clean, one-row-per-occurrence table rather than `rows` (FULL); that
@@ -413,7 +409,7 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
     year_counts : Counter = Counter(years)
     all_years   = list(range(year_range[0], year_range[1] + 1)) if year_range[0] else []
 
-    # Normalise temporal co-occurrence/collocation by text count per year
+    # Normalise temporal co-occurrence/collocation by Textile Metaphor text count per year
     def normalise_year_cooc(acc: defaultdict) -> dict:
         result: dict = {}
         for year, word_dict in acc.items():
@@ -436,10 +432,8 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
         "sources"          : sources.most_common(),
         "source_years"     : {s: [min(y), max(y)] for s, y in source_years.items()},
         "all_years"        : all_years,
+        # Textile Metaphor texts per year (the only "texts per year" this dashboard shows)
         "year_counts"      : {y: year_counts.get(y, 0) for y in all_years},
-        "year_text_counts" : {y: year_text_counts.get(y, 0) for y in all_years},
-        # Distinct texts with a Textile Metaphor use, per year
-        "year_textile_metaphor_texts": {y: year_textile_metaphor_texts.get(y, 0) for y in all_years},
         # Textile Metaphor word frequency, corpus-wide
         "textile_freq"     : textile_freq.most_common(),
         # Absolute (not normalised) Textile Metaphor word hits per year
@@ -454,7 +448,7 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
         "source_textile_by_cat"  : {
             s: dict(cats) for s, cats in source_textile_by_cat.items()
         },
-        # Total construction texts corpus-wide, text-level
+        # Total construction texts corpus-wide, text-level (not Textile-Metaphor-restricted; console log only)
         "construction_texts"     : construction_texts,
     }
 
@@ -580,6 +574,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="stat-card"><div class="stat-number" id="stat-years">—</div><div class="stat-label">Year range</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-textile-metaphor">—</div><div class="stat-label">Metaphorical Textile texts</div></div>
   </div>
+  <p class="chart-note" style="margin-top:0.75rem;">Every figure in this dashboard — here and throughout — is restricted to texts with a Textile Metaphor use. A source contributing none does not appear below.</p>
   <br>
   <p class="chart-title">Sources in corpus</p>
   <table class="source-table">
@@ -592,15 +587,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <p class="section-label">Chronology</p>
   <h2 class="section-title">Distribution Over Time</h2>
   <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1.5rem;">
-    How the corpus and its Textile Metaphor use spread across publication years. The first
-    chart is the raw number of included texts per year, regardless of textile-word use; the
-    second shows, per year, the absolute number of hits per textile word — counting only
-    words from texts with a Textile Metaphor use.
+    How the corpus and its Textile Metaphor use spread across publication years. Both charts
+    below — texts per year and hits per word per year — are restricted to texts with a
+    Textile Metaphor use; no other basis is used anywhere in this dashboard.
   </p>
   <div class="chart-wrap">
     <p class="chart-title">Texts per year</p>
     <canvas id="chart-year-total" height="80"></canvas>
-    <p class="chart-note">Number of included texts published each year (all included texts, not restricted to Textile Metaphor).</p>
+    <p class="chart-note">Distinct texts per year with a Textile Metaphor use.</p>
   </div>
 
   <p class="subsection-title">Textile word hits per year</p>
