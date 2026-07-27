@@ -10,6 +10,9 @@ Inputs (CSV, see Configuration below):
   * CLEAN table — one row per textile-word occurrence, pre-filtered to the
     included texts. Used only for the textile co-occurrence and collocation
     statistics, where per-occurrence granularity matters.
+  * Journal-counts table — total articles published per DH journal per year,
+    independent of this corpus. Used only to contextualise the corpus against
+    overall publication volume (see build_stats vs. compute_survey_coverage).
 
 Output: a single HTML file with the computed statistics embedded as JSON and
 rendered client-side with Chart.js.
@@ -50,12 +53,13 @@ for _res, _kind in [("punkt","tokenizers"),("punkt_tab","tokenizers"),
 # ---------------------------------------------------------------------------
 
 CSV_PATH       = Path("../FULL Weaving DH Data Table.csv")
-# Clean, one-row-per-occurrence textile KWIC table (already filtered to
-# include_exclude == "y"; each row = one textile word hit with its own
-# concordance snippet). Used exclusively for the textile co-occurrence
-# (Kookurrenz) and collocation / concordance (Konkordanz) statistics — every
-# other statistic in the dashboard is computed from CSV_PATH above.
+# One row per textile-word occurrence, pre-filtered to include_exclude == "y".
+# Used only for the co-occurrence and collocation statistics; every other
+# statistic is computed from CSV_PATH.
 CLEAN_CSV_PATH = Path("../CLEAN Weaving DH Data Table.csv")
+# Total articles published per DH journal per year, independent of this
+# corpus's search hits. Feeds compute_survey_coverage() only.
+JOURNAL_COUNTS_PATH = Path("../journal_count/articles_per_year_long.csv")
 OUTPUT_PATH = Path("Weaving DH Dashboard.html")
 
 TOP_N_COOC   = 5
@@ -69,11 +73,9 @@ STOPWORDS = set(stopwords.words("english")) | {
     "second", "new", "based", "see", "et", "al", "pp", "fig",
 }
 
-# Canonical forms for the textile metaphor usage categories (case-insensitive).
-# General Metaphor (and every other annotated category) is intentionally
-# excluded — it is not counted anywhere in the dashboard; only Textile
-# Metaphor is treated as a recognised category.
-TEXTILE_USAGE_CATEGORIES  = {"textile metaphor"}
+# Only Textile Metaphor is a recognised category; General Metaphor and every
+# other annotated category are excluded from all counts.
+TEXTILE_USAGE_CATEGORIES = {"textile metaphor"}
 
 # Canonical display labels (title-case) for each normalised key
 TEXTILE_USAGE_LABELS: dict[str, str] = {
@@ -237,63 +239,6 @@ def _colloc_counter(kwic_cell: str, window: int = COLLOC_WIN) -> Counter:
                 counter[lemma] += 1
     return counter
 
-def _iter_kwic_blocks(kwic_cell: str, query_words: list[str],
-                      canonicalise=None) -> list[tuple[str, str]]:
-    """
-    Return (canonical_key, block_text) pairs by splitting a multi-word KWIC cell
-    on its label lines.  Single-word cells return one pair with the sole canonical key.
-    """
-    if not kwic_cell or not query_words:
-        return []
-    canon           = canonicalise if canonicalise else (lambda w: w.lower())
-    label_to_canon  = {w.lower(): canon(w) for w in query_words}
-    canonical_words = list(dict.fromkeys(label_to_canon.values()))
-
-    if len(canonical_words) == 1:
-        return [(canonical_words[0], kwic_cell)]
-
-    results: list[tuple[str, str]] = []
-    current_key  = None
-    block_lines: list[str] = []
-
-    def flush():
-        if current_key and block_lines:
-            results.append((current_key, "\n".join(block_lines)))
-
-    for line in kwic_cell.split("\n"):
-        stripped = line.strip()
-        matched_key = None
-        if _LABEL_RE.match(stripped):
-            candidate = stripped.rstrip(":").lower()
-            if candidate in label_to_canon:
-                matched_key = label_to_canon[candidate]
-        if matched_key:
-            flush()
-            current_key = matched_key
-            block_lines = []
-        else:
-            block_lines.append(line)
-    flush()
-    return results
-
-def _accumulate_kwic_cooc(kwic_cell: str, query_words: list[str],
-                           cooc_acc: defaultdict, colloc_acc: defaultdict,
-                           year: Optional[int], year_cooc_acc: defaultdict,
-                           canonicalise=None) -> None:
-    """
-    Single pass over a KWIC cell that populates three accumulators:
-      cooc_acc      – {canonical_word -> Counter(lemma -> total_count)}
-      colloc_acc    – {canonical_word -> Counter(lemma -> total_count)}  (±window)
-      year_cooc_acc – {year -> {canonical_word -> Counter(lemma -> count)}}
-    """
-    for key, block in _iter_kwic_blocks(kwic_cell, query_words, canonicalise):
-        for lemma, cnt in _cooc_counter(block).items():
-            cooc_acc[key][lemma] += cnt
-            if year is not None:
-                year_cooc_acc[year][key][lemma] += cnt
-        for lemma, cnt in _colloc_counter(block).items():
-            colloc_acc[key][lemma] += cnt
-
 # ---------------------------------------------------------------------------
 # 3.  Aggregate statistics
 # ---------------------------------------------------------------------------
@@ -302,13 +247,8 @@ def _accumulate_textile_cooc_from_clean(
         clean_rows: list[dict],
         cooc_acc: defaultdict, colloc_acc: defaultdict,
         year_cooc_acc: defaultdict, year_colloc_acc: defaultdict) -> None:
-    """
-    Populate the textile co-occurrence / collocation accumulators from the
-    clean, one-row-per-occurrence table (CLEAN_CSV_PATH). Each row already
-    represents exactly one Textile Metaphor word hit with its own concordance
-    snippet, so — unlike the FULL table's multi-word KWIC cells — no
-    label-line block splitting is needed here.
-    """
+    """Populate the co-occurrence/collocation accumulators from the clean,
+    one-row-per-occurrence table (CLEAN_CSV_PATH)."""
     for row in clean_rows:
         word = row.get("textile_words", "").strip()
         if not word:
@@ -330,18 +270,12 @@ def _accumulate_textile_cooc_from_clean(
                 year_colloc_acc[year][canon][lemma] += cnt
 
 def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> dict:
-    # rows        – texts with include_exclude == "y" (one row per text in the FULL
-    #               table). Every statistic below — sources, year range, texts per
-    #               year, word frequencies, per-source breakdown — is computed only
-    #               from the subset of these that carry a Textile Metaphor use.
-    #               General Metaphor, every other annotated category, and texts
-    #               with no recognised category at all are excluded from every
-    #               count in this dashboard; there is no other counting basis.
-    # clean_rows  – rows from the clean, one-occurrence-per-row textile KWIC
-    #               table (CLEAN_CSV_PATH), already restricted to Textile Metaphor
-    #               occurrences; drives the co-occurrence and collocation stats.
-    #               Falls back to `rows` if not given, so standalone calls to
-    #               build_stats keep working.
+    """
+    Compute every dashboard statistic from `rows` (included FULL-table texts),
+    restricted throughout to texts with a Textile Metaphor use. `clean_rows`
+    drives the co-occurrence/collocation stats only and falls back to `rows`
+    if not given.
+    """
     years         : list[int]   = []
     sources       : Counter     = Counter()
     source_years  : defaultdict = defaultdict(list)
@@ -359,10 +293,8 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
 
     textile_metaphor_texts   : int = 0
 
-    # Construction is tracked separately across the full included corpus (not
-    # restricted to Textile Metaphor) since it is a distinct comparison
-    # vocabulary, not a textile-metaphor category; it is not displayed anywhere
-    # in the dashboard, only logged to the console.
+    # Distinct comparison vocabulary, not a Textile Metaphor category —
+    # logged to the console only, not displayed in the dashboard.
     construction_texts    : int = 0
 
     for row in rows:
@@ -398,9 +330,6 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
             if source:
                 source_textile_by_cat[source][TEXTILE_USAGE_LABELS[cat]] += 1
 
-    # Textile co-occurrence / collocation (Kookurrenz / Konkordanz) come from
-    # the clean, one-row-per-occurrence table rather than `rows` (FULL); that
-    # table holds Textile Metaphor occurrences only.
     _accumulate_textile_cooc_from_clean(
         clean_rows if clean_rows is not None else rows,
         textile_cooc_acc, textile_colloc_acc, year_cooc_textile, year_colloc_textile)
@@ -432,11 +361,8 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
         "sources"          : sources.most_common(),
         "source_years"     : {s: [min(y), max(y)] for s, y in source_years.items()},
         "all_years"        : all_years,
-        # Textile Metaphor texts per year (the only "texts per year" this dashboard shows)
         "year_counts"      : {y: year_counts.get(y, 0) for y in all_years},
-        # Textile Metaphor word frequency, corpus-wide
         "textile_freq"     : textile_freq.most_common(),
-        # Absolute (not normalised) Textile Metaphor word hits per year
         "year_textile"     : {y: dict(c) for y, c in year_textile.items()},
         "textile_cooc"     : top_cooc(textile_cooc_acc),
         "textile_colloc"   : top_colloc(textile_colloc_acc),
@@ -444,16 +370,109 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
         "year_colloc_textile": normalise_year_cooc(year_colloc_textile),
         "textile_words"    : [w for w, _ in textile_freq.most_common()],
         "textile_variants" : TEXTILE_VARIANTS,
-        # Textile Metaphor texts per source: {source -> {display_label -> count}}
         "source_textile_by_cat"  : {
             s: dict(cats) for s, cats in source_textile_by_cat.items()
         },
-        # Total construction texts corpus-wide, text-level (not Textile-Metaphor-restricted; console log only)
         "construction_texts"     : construction_texts,
     }
 
 # ---------------------------------------------------------------------------
-# 4.  HTML template
+# 4.  Survey-coverage statistics
+# ---------------------------------------------------------------------------
+#
+# The FULL table holds one row per search hit, not every article a journal
+# ever published, so it can't say how common Textile Metaphor use is
+# relative to total output. JOURNAL_COUNTS_PATH supplies that denominator
+# for 7 of this corpus's 8 sources ("Digital Medievalist" has no counterpart
+# there and is excluded here, as is any journal-year absent from the survey).
+
+# Maps journal_title values from the FULL table to the journal names used in
+# ../journal_count. Renamed/merged journals map to their combined entry.
+JOURNAL_COUNTS_NAME_MAP: dict[str, str] = {
+    "Index of DH Conferences": "Index of DH Conferences",
+    "Digital Humanities Quarterly": "Digital Humanities Quarterly",
+    "Literary and Linguistic Computing/Digital Scholarship in the Humanities":
+        "Literary and Linguistic Computing / Digital Scholarship in the Humanities",
+    "Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation":
+        "Computers and the Humanities / Language Resources and Evaluation",
+    "Journal of Cultural Analytics": "Journal of Cultural Analytics",
+    "Journal of the Text Encoding Initiative": "Journal of the Text Encoding Initiative",
+    "Digital Classics Online": "Digital Classics Online",
+}
+
+def load_journal_counts(path: Path) -> dict[str, dict[int, int]]:
+    """Load ../journal_count's {journal;year;count} survey into
+    {journal_name: {year: total_articles_published}}."""
+    counts: defaultdict = defaultdict(dict)
+    with open(path, encoding="utf-8") as fh:
+        for row in csv.DictReader(fh, delimiter=";"):
+            counts[row["journal"]][int(row["year"])] = int(row["count"])
+    return counts
+
+def compute_survey_coverage(all_rows: list[dict], rows: list[dict],
+                             journal_counts: dict[str, dict[int, int]],
+                             all_years: list[int]) -> dict:
+    """
+    Context statistics for the journal-years this corpus actually searched
+    (from all_rows — every search-hit row, included or excluded, since an
+    excluded row still proves that journal-year was searched) and for
+    sources with a counterpart in journal_counts:
+      * articles_surveyed_total   — total articles those journals actually
+        published in those years (the search population).
+      * textile_metaphor_rate_pct — Textile Metaphor texts among the matched
+        journals, as a percentage of articles_surveyed_total.
+      * survey_by_year   — {year: total articles}, aligned with all_years.
+      * survey_by_source — {journal_title: total articles}, keyed like
+        DATA.sources for the per-source chart.
+    """
+    searched_years_by_mapped: defaultdict = defaultdict(set)
+    searched_years_by_source: defaultdict = defaultdict(set)
+    for row in all_rows:
+        title  = row.get("journal_title", "").strip()
+        mapped = JOURNAL_COUNTS_NAME_MAP.get(title)
+        year   = _parse_year(row)
+        if mapped and year:
+            searched_years_by_mapped[mapped].add(year)
+            searched_years_by_source[title].add(year)
+
+    articles_surveyed_total = sum(
+        journal_counts.get(journal, {}).get(year, 0)
+        for journal, years in searched_years_by_mapped.items()
+        for year in years
+    )
+
+    textile_metaphor_matched = 0
+    for row in rows:
+        if row.get("journal_title", "").strip() not in JOURNAL_COUNTS_NAME_MAP:
+            continue
+        t_usage_raw = _get_column_by_substr(row, "usage_textile")
+        t_cats = parse_usage_categories(t_usage_raw, TEXTILE_USAGE_VARIANTS, TEXTILE_USAGE_CATEGORIES)
+        if t_cats:
+            textile_metaphor_matched += 1
+
+    rate = (round(textile_metaphor_matched / articles_surveyed_total * 100, 2)
+            if articles_surveyed_total else None)
+
+    survey_by_year_raw: Counter = Counter()
+    for journal, years in searched_years_by_mapped.items():
+        for year in years:
+            survey_by_year_raw[year] += journal_counts.get(journal, {}).get(year, 0)
+    survey_by_year = {y: survey_by_year_raw.get(y, 0) for y in all_years}
+
+    survey_by_source = {}
+    for title, years in searched_years_by_source.items():
+        mapped = JOURNAL_COUNTS_NAME_MAP.get(title)
+        survey_by_source[title] = sum(journal_counts.get(mapped, {}).get(y, 0) for y in years)
+
+    return {
+        "articles_surveyed_total"   : articles_surveyed_total,
+        "textile_metaphor_rate_pct" : rate,
+        "survey_by_year"            : survey_by_year,
+        "survey_by_source"          : survey_by_source,
+    }
+
+# ---------------------------------------------------------------------------
+# 5.  HTML template
 # ---------------------------------------------------------------------------
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
@@ -478,9 +497,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     --grey-4: #c8c8c8;
     --grey-5: #ebebeb;
     --rule:   1px solid #d0d0d0;
-    --c-textile: #2563a8;
-    --c-const:   #b5451b;
-    --c-textile-metaphor: #2563a8;
     --font-display: 'DM Serif Display', Georgia, serif;
     --font-body:    'DM Sans', system-ui, sans-serif;
     --font-mono:    'JetBrains Mono', 'Fira Mono', monospace;
@@ -515,6 +531,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .source-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
   .source-table th { text-align: left; font-weight: 500; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grey-3); padding: 0.5rem 1rem 0.5rem 0; border-bottom: var(--rule); }
   .source-table td { padding: 0.6rem 1rem 0.6rem 0; border-bottom: var(--rule); color: var(--grey-1); }
+  .source-table th:last-child, .source-table td:last-child { text-align: right; padding-right: 0; }
   .source-table tr:last-child td { border-bottom: none; }
 
   .chart-wrap { position: relative; background: #fff; border: var(--rule); padding: 1.5rem; margin-bottom: 1.5rem; }
@@ -573,12 +590,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="stat-card"><div class="stat-number" id="stat-sources">—</div><div class="stat-label">Sources</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-years">—</div><div class="stat-label">Year range</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-textile-metaphor">—</div><div class="stat-label">Metaphorical Textile texts</div></div>
+    <div class="stat-card"><div class="stat-number" id="stat-articles-surveyed">—</div><div class="stat-label">Articles surveyed</div></div>
+    <div class="stat-card"><div class="stat-number" id="stat-textile-rate">—</div><div class="stat-label">Textile metaphor rate</div></div>
   </div>
-  <p class="chart-note" style="margin-top:0.75rem;">Every figure in this dashboard — here and throughout — is restricted to texts with a Textile Metaphor use. A source contributing none does not appear below.</p>
   <br>
   <p class="chart-title">Sources in corpus</p>
   <table class="source-table">
-    <thead><tr><th>Source</th><th>Texts</th></tr></thead>
+    <thead><tr><th>Source</th><th>Texts with Textile Metaphors</th></tr></thead>
     <tbody id="source-tbody"></tbody>
   </table>
 </section>
@@ -586,22 +604,24 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <section id="temporal">
   <p class="section-label">Chronology</p>
   <h2 class="section-title">Distribution Over Time</h2>
-  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1.5rem;">
-    How the corpus and its Textile Metaphor use spread across publication years. Both charts
-    below — texts per year and hits per word per year — are restricted to texts with a
-    Textile Metaphor use; no other basis is used anywhere in this dashboard.
-  </p>
-  <div class="chart-wrap">
-    <p class="chart-title">Texts per year</p>
-    <canvas id="chart-year-total" height="80"></canvas>
-    <p class="chart-note">Distinct texts per year with a Textile Metaphor use.</p>
+  <div class="chart-row">
+    <div class="chart-wrap">
+      <p class="chart-title">Texts with textile metaphors per year</p>
+      <canvas id="chart-year-total" height="140"></canvas>
+      <p class="chart-note">Distinct texts per year with a Textile Metaphor use.</p>
+    </div>
+    <div class="chart-wrap">
+      <p class="chart-title">All articles per year</p>
+      <canvas id="chart-year-all" height="140"></canvas>
+      <p class="chart-note">Total articles published per year.</p>
+    </div>
   </div>
 
   <p class="subsection-title">Textile word hits per year</p>
   <div class="chart-wrap">
     <p class="chart-title">By word</p>
     <canvas id="chart-year-textile" height="160"></canvas>
-    <p class="chart-note">Absolute hits per year, by textile word — Textile Metaphor texts only.</p>
+    <p class="chart-note">Absolute hits per year, by textile word.</p>
   </div>
 </section>
 
@@ -619,7 +639,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <p class="chart-title">Temporal distribution — select word</p>
       <div class="tab-group" id="tabs-textile"></div>
       <canvas id="chart-textile-word-time" height="160"></canvas>
-      <p class="chart-note">Absolute hits per year for the selected word — Textile Metaphor texts only.</p>
+      <p class="chart-note">Absolute hits per year for the selected word.</p>
     </div>
   </div>
 </section>
@@ -627,10 +647,17 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <section id="sources">
   <p class="section-label">Sources</p>
   <h2 class="section-title">By Source</h2>
-  <p class="subsection-title">Textile Metaphor Texts per Source</p>
-  <div class="chart-wrap">
-    <canvas id="chart-source-ratio" height="120"></canvas>
-    <p class="chart-note">Texts per source in which a Textile Metaphor word appeared — Textile Metaphor texts only.</p>
+  <div class="chart-row">
+    <div class="chart-wrap">
+      <p class="chart-title">Textile Metaphor Texts per Source</p>
+      <canvas id="chart-source-ratio" height="160"></canvas>
+      <p class="chart-note">Texts per source in which a Textile Metaphor word appeared.</p>
+    </div>
+    <div class="chart-wrap">
+      <p class="chart-title">All Articles per Source</p>
+      <canvas id="chart-source-all" height="160"></canvas>
+      <p class="chart-note">Total articles published.</p>
+    </div>
   </div>
 </section>
 
@@ -639,7 +666,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <h2 class="section-title">Co-occurrence &amp; Collocation</h2>
 
   <p class="subsection-title">Top 5 Co-occurring Words in KWIC Context</p>
-  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1rem;">Most frequent lemmatised content words within the ±15-token KWIC window, drawn from Textile Metaphor occurrences only. Co-occurrence analysis uses WordNet noun lemmatization, which differs from the PorterStemmer used at KWIC search time.</p>
+  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1rem;">Most frequent lemmatised content words within a ±15-token KWIC window, drawn from Textile Metaphor occurrences only. Co-occurrence analysis uses WordNet noun lemmatization, which differs from the PorterStemmer used at KWIC search time.</p>
   <div class="cooc-grid" id="cooc-textile"></div>
 
   <p class="subsection-title">Immediate Collocations (±2 tokens)</p>
@@ -694,9 +721,12 @@ document.getElementById('stat-sources').textContent = DATA.sources.length;
 document.getElementById('stat-years').textContent   =
   DATA.year_range[0] ? `${DATA.year_range[0]}–${DATA.year_range[1]}` : '—';
 
-// Textile Metaphor texts: rows tagged Textile Metaphor, counted once per text
-// (computed in Python, not re-derived here)
 document.getElementById('stat-textile-metaphor').textContent = DATA.textile_metaphor_texts.toLocaleString();
+
+document.getElementById('stat-articles-surveyed').textContent =
+  DATA.articles_surveyed_total != null ? DATA.articles_surveyed_total.toLocaleString() : '—';
+document.getElementById('stat-textile-rate').textContent =
+  DATA.textile_metaphor_rate_pct != null ? `${String(DATA.textile_metaphor_rate_pct).replace('.', ',')}%` : '—';
 
 const tbody = document.getElementById('source-tbody');
 DATA.sources.forEach(([j,n]) => {
@@ -707,16 +737,17 @@ DATA.sources.forEach(([j,n]) => {
   tbody.appendChild(tr);
 });
 
-// Variants notes
 const textileVariantParts = Object.entries(DATA.textile_variants).map(([w,v])=>`${w} (incl. ${v})`);
 document.getElementById('textile-variants-note').textContent =
   'Morphological variants included: ' + textileVariantParts.join('; ') + '.';
 
 // ── Source chart ──────────────────────────────────────────────────
+// Two separate charts, each on its own y-axis, rather than one overlay: the
+// Textile Metaphor rate is small enough (~1-2%) that a dark-blue bar drawn
+// over a light-blue one at true scale would be all but invisible.
 (function(){
   const sources = DATA.sources.map(([s])=>s);
 
-  // Textile Metaphor texts per source
   new Chart(document.getElementById('chart-source-ratio'), {
     type: 'bar',
     data: {
@@ -735,6 +766,25 @@ document.getElementById('textile-variants-note').textContent =
       }
     }
   });
+
+  new Chart(document.getElementById('chart-source-all'), {
+    type: 'bar',
+    data: {
+      labels: sources,
+      datasets: [{
+        data: sources.map(s => DATA.survey_by_source[s] || 0),
+        backgroundColor: '#9dc3e6',
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ grid:GRID, ticks:{ ...TICKS, maxRotation:30, font:{size:10} } },
+        y:{ grid:GRID, ticks:TICKS, beginAtZero:true }
+      }
+    }
+  });
 })();
 
 // ── Texts per year ────────────────────────────────────────────────
@@ -745,6 +795,15 @@ new Chart(document.getElementById('chart-year-total'), {
     datasets: [{ data: DATA.all_years.map(y=>DATA.year_counts[y]||0), backgroundColor:'#0a0a0a', borderWidth:0 }]
   },
   options: { plugins:{legend:{display:false}}, scales:{ x:{grid:GRID,ticks:TICKS}, y:{grid:GRID,ticks:{...TICKS,stepSize:1},beginAtZero:true} } }
+});
+
+new Chart(document.getElementById('chart-year-all'), {
+  type: 'bar',
+  data: {
+    labels: DATA.all_years,
+    datasets: [{ data: DATA.all_years.map(y=>DATA.survey_by_year[y]||0), backgroundColor:'#c8c8c8', borderWidth:0 }]
+  },
+  options: { plugins:{legend:{display:false}}, scales:{ x:{grid:GRID,ticks:TICKS}, y:{grid:GRID,ticks:TICKS,beginAtZero:true} } }
 });
 
 // ── Stacked temporal by word ───────────────────────────────────────
@@ -911,7 +970,7 @@ renderCooc('colloc-textile', DATA.textile_colloc, DATA.textile_variants);
 </html>"""
 
 # ---------------------------------------------------------------------------
-# 5.  Main
+# 6.  Main
 # ---------------------------------------------------------------------------
 
 def main() -> None:
@@ -936,6 +995,19 @@ def main() -> None:
     stats = build_stats(rows, clean_rows)
     print(f"  Done. {len(stats['textile_words'])} textile words, "
           f"{stats['construction_texts']} construction texts.")
+
+    if JOURNAL_COUNTS_PATH.exists():
+        print(f"Loading {JOURNAL_COUNTS_PATH} …")
+        journal_counts = load_journal_counts(JOURNAL_COUNTS_PATH)
+        stats.update(compute_survey_coverage(all_rows, rows, journal_counts, stats["all_years"]))
+        print(f"  Articles surveyed: {stats['articles_surveyed_total']}, "
+              f"Textile Metaphor rate: {stats['textile_metaphor_rate_pct']}%.")
+    else:
+        print(f"  NOTE: {JOURNAL_COUNTS_PATH} not found — skipping survey-coverage statistics.")
+        stats["articles_surveyed_total"]   = None
+        stats["textile_metaphor_rate_pct"] = None
+        stats["survey_by_year"]            = {}
+        stats["survey_by_source"]          = {}
 
     html = HTML_TEMPLATE.replace("__DATA_PLACEHOLDER__", json.dumps(stats, ensure_ascii=False))
     OUTPUT_PATH.write_text(html, encoding="utf-8")
