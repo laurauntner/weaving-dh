@@ -812,17 +812,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <section id="sources">
   <p class="section-label">Sources</p>
   <h2 class="section-title">By Source</h2>
-  <div class="chart-row">
-    <div class="chart-wrap">
-      <p class="chart-title">Textile Metaphor Texts per Source</p>
-      <canvas id="chart-source-ratio" height="160"></canvas>
-      <p class="chart-note">Texts per source in which a Textile Metaphor word appeared.</p>
-    </div>
-    <div class="chart-wrap">
-      <p class="chart-title">All Articles per Source</p>
-      <canvas id="chart-source-all" height="160"></canvas>
-      <p class="chart-note">Total articles published.</p>
-    </div>
+  <div class="chart-wrap">
+    <p class="chart-title">Textile Metaphor Texts per Source</p>
+    <canvas id="chart-source-ratio" height="120"></canvas>
+    <p class="chart-note">Texts per source in which a Textile Metaphor word appeared.</p>
+  </div>
+
+  <div class="chart-wrap">
+    <p class="chart-title">All Articles per Source</p>
+    <canvas id="chart-source-all" height="120"></canvas>
+    <p class="chart-note">Total articles published.</p>
   </div>
 
   <div class="chart-wrap">
@@ -943,7 +942,7 @@ document.getElementById('textile-variants-note').textContent =
     options: {
       plugins:{ legend:{ display:false } },
       scales:{
-        x:{ grid:GRID, ticks:{ ...TICKS, maxRotation:30, font:{size:10} } },
+        x:{ grid:GRID, ticks:{ ...TICKS, autoSkip:false, maxRotation:60, minRotation:60, font:{size:10} } },
         y:{ grid:GRID, ticks:{ ...TICKS, stepSize:1 }, beginAtZero:true }
       }
     }
@@ -962,7 +961,7 @@ document.getElementById('textile-variants-note').textContent =
     options: {
       plugins:{ legend:{ display:false } },
       scales:{
-        x:{ grid:GRID, ticks:{ ...TICKS, maxRotation:30, font:{size:10} } },
+        x:{ grid:GRID, ticks:{ ...TICKS, autoSkip:false, maxRotation:60, minRotation:60, font:{size:10} } },
         y:{ grid:GRID, ticks:TICKS, beginAtZero:true }
       }
     }
