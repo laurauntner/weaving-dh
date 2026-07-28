@@ -584,7 +584,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Weaving DH — Corpus Dashboard</title>
+<title>Textile Metaphors in Digital Humanities Scholarship</title>
 <link rel="icon" type="image/jpeg" href="https://ids.si.edu/ids/deliveryService?id=NMAH-AHB2019q157831-000001&max=64">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -612,7 +612,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
   header { border-bottom: 2px solid var(--black); padding: 3rem 0 2rem; }
   .header-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 2rem; }
-  .site-title { font-family: var(--font-display); font-size: clamp(2rem,5vw,3.2rem); letter-spacing: -0.02em; line-height: 1.1; }
+  .site-title { font-family: var(--font-display); font-size: clamp(1.5rem,3.5vw,2.4rem); letter-spacing: -0.02em; line-height: 1.1; }
+  .site-contributors { font-size: 0.85rem; color: var(--grey-3); margin-top: 0.6rem; }
   .header-logo { width: 120px; height: 120px; object-fit: cover; flex-shrink: 0; border: var(--rule); }
 
   nav { border-bottom: var(--rule); padding: 0.75rem 0; position: sticky; top: 0; background: var(--white); z-index: 100; }
@@ -671,7 +672,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 
 <header>
   <div class="header-inner">
-    <div><h1 class="site-title">Weaving DH</h1></div>
+    <div>
+      <h1 class="site-title">Textile Metaphors in Digital Humanities Scholarship</h1>
+      <p class="site-contributors">Laura Untner, Quinn Daedal, Tessa Gengnagel</p>
+    </div>
     <img class="header-logo"
          src="https://ids.si.edu/ids/deliveryService?id=NMAH-AHB2019q157831-000001&max=300"
          alt="Weaving DH logo">
@@ -685,7 +689,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <li><a href="#vocabulary">Words</a></li>
     <li><a href="#sources">Sources</a></li>
     <li><a href="#cooccurrence">Context</a></li>
-    <li><a href="#methodology">Notes</a></li>
     <li class="nav-github">
       <a href="https://github.com/laurauntner/weaving-dh" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository" title="GitHub repository">
         <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0c-4.42 0-8 3.58-8 8a8.013 8.013 0 0 0 5.47 7.59c.4.08.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -875,13 +878,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <canvas id="chart-trend-textile-colloc" height="160"></canvas>
     </div>
   </div>
-</section>
-
-<section id="methodology">
-  <h2 class="section-title">Notes</h2>
-  <p class="chart-note">
-    Corpus comprises all journal articles in which at least one textile metaphor word was identified and manually confirmed as metaphorical. Texts were fully extracted including abstracts; OCR quality was not manually verified and fuzzy OCR artefacts may affect word counts. Include/exclude decisions were made by a single annotator. Search used unlemmatised surface forms; morphological variants were added manually where relevant.
-  </p>
 </section>
 
 </div>
