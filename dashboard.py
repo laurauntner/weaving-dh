@@ -617,6 +617,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     </div>
   </div>
 
+  <div class="chart-wrap">
+    <p class="chart-title">Textile Metaphor rate per year</p>
+    <canvas id="chart-year-rate" height="80"></canvas>
+    <p class="chart-note">Textile Metaphor texts as a share of all articles published that year. Years without survey data are omitted.</p>
+  </div>
+
   <p class="subsection-title">Textile word hits per year</p>
   <div class="chart-wrap">
     <p class="chart-title">By word</p>
@@ -804,6 +810,40 @@ new Chart(document.getElementById('chart-year-all'), {
     datasets: [{ data: DATA.all_years.map(y=>DATA.survey_by_year[y]||0), backgroundColor:'#c8c8c8', borderWidth:0 }]
   },
   options: { plugins:{legend:{display:false}}, scales:{ x:{grid:GRID,ticks:TICKS}, y:{grid:GRID,ticks:TICKS,beginAtZero:true} } }
+});
+
+// Textile Metaphor texts per year as a percentage of that year's total
+// articles — a line, not bars, since it's a rate rather than a count, and
+// null (not 0) for years with no survey denominator so the line breaks
+// instead of implying a real zero.
+new Chart(document.getElementById('chart-year-rate'), {
+  type: 'line',
+  data: {
+    labels: DATA.all_years,
+    datasets: [{
+      data: DATA.all_years.map(y => {
+        const total = DATA.survey_by_year[y] || 0;
+        return total > 0 ? (DATA.year_counts[y]||0) / total * 100 : null;
+      }),
+      borderColor: '#2563a8',
+      backgroundColor: 'rgba(37,99,168,0.08)',
+      fill: true,
+      spanGaps: false,
+      tension: 0.25,
+      pointRadius: 3,
+      pointBackgroundColor: '#2563a8',
+    }]
+  },
+  options: {
+    plugins: {
+      legend: { display: false },
+      tooltip: { callbacks: { label: ctx => `${String(Math.round(ctx.parsed.y*10)/10).replace('.', ',')}%` } },
+    },
+    scales: {
+      x: { grid:GRID, ticks:TICKS },
+      y: { grid:GRID, ticks:{ ...TICKS, callback: v => `${v}%` }, beginAtZero:true },
+    }
+  }
 });
 
 // ── Stacked temporal by word ───────────────────────────────────────
