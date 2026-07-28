@@ -392,7 +392,10 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
 # ever published, so it can't say how common Textile Metaphor use is
 # relative to total output. JOURNAL_COUNTS_PATH supplies that denominator
 # for 7 of this corpus's 8 sources ("Digital Medievalist" has no counterpart
-# there and is excluded here, as is any journal-year absent from the survey).
+# there and is excluded here). The overview figures (articles_surveyed_total,
+# textile_metaphor_rate_pct) use each journal's full, unbounded output, since
+# the underlying search covered more than all_years; the per-year/per-source
+# chart data is bounded to all_years so those charts share one clean axis.
 
 # Maps journal_title values from the FULL table to the journal names used in
 # ../journal_count. Renamed/merged journals map to their combined entry.
@@ -417,39 +420,35 @@ def load_journal_counts(path: Path) -> dict[str, dict[int, int]]:
             counts[row["journal"]][int(row["year"])] = int(row["count"])
     return counts
 
-def compute_survey_coverage(all_rows: list[dict], rows: list[dict],
+def compute_survey_coverage(rows: list[dict],
                              journal_counts: dict[str, dict[int, int]],
                              all_years: list[int]) -> dict:
     """
-    Context statistics for the journal-years this corpus actually searched
-    (from all_rows — every search-hit row, included or excluded, since an
-    excluded row still proves that journal-year was searched) and for
-    sources with a counterpart in journal_counts:
-      * articles_surveyed_total   — total articles those journals actually
-        published in those years (the search population).
-      * textile_metaphor_rate_pct — Textile Metaphor texts among the matched
-        journals, as a percentage of articles_surveyed_total.
-      * survey_by_year        — {year: total articles}, aligned with all_years.
-      * survey_by_source      — {journal_title: total articles}, keyed like
-        DATA.sources for the per-source chart.
-      * survey_by_source_year — {journal_title: {year: total articles}}, for
-        the per-source rate-over-time chart.
+    Three kinds of figures, all for the 7 of this corpus's 8 sources with a
+    counterpart in journal_counts ("Digital Medievalist" has none and is
+    excluded):
+      * articles_surveyed_total — corpus-wide overview figure, using each
+        journal's full, unbounded published output (the actual search
+        covered more than just all_years).
+      * textile_metaphor_rate_pct — Textile Metaphor texts as a percentage
+        of articles published within all_years specifically (the corpus's
+        own year range), not the unbounded total above.
+      * survey_by_year, survey_by_source, survey_by_source_year — the
+        per-year/per-source chart data, likewise bounded to all_years so
+        every chart shares a consistent, meaningful axis.
     """
-    searched_years_by_mapped: defaultdict = defaultdict(set)
-    searched_years_by_source: defaultdict = defaultdict(set)
-    for row in all_rows:
-        title  = row.get("journal_title", "").strip()
-        mapped = JOURNAL_COUNTS_NAME_MAP.get(title)
-        year   = _parse_year(row)
-        if mapped and year:
-            searched_years_by_mapped[mapped].add(year)
-            searched_years_by_source[title].add(year)
-
-    articles_surveyed_total = sum(
-        journal_counts.get(journal, {}).get(year, 0)
-        for journal, years in searched_years_by_mapped.items()
-        for year in years
+    full_lifetime_total = sum(
+        sum(journal_counts.get(mapped, {}).values())
+        for mapped in JOURNAL_COUNTS_NAME_MAP.values()
     )
+    articles_surveyed_total = full_lifetime_total
+
+    survey_by_year = {
+        y: sum(journal_counts.get(mapped, {}).get(y, 0)
+               for mapped in JOURNAL_COUNTS_NAME_MAP.values())
+        for y in all_years
+    }
+    articles_surveyed_bounded_total = sum(survey_by_year.values())
 
     textile_metaphor_matched = 0
     for row in rows:
@@ -460,21 +459,15 @@ def compute_survey_coverage(all_rows: list[dict], rows: list[dict],
         if t_cats:
             textile_metaphor_matched += 1
 
-    rate = (round(textile_metaphor_matched / articles_surveyed_total * 100, 2)
-            if articles_surveyed_total else None)
+    rate = (round(textile_metaphor_matched / articles_surveyed_bounded_total * 100, 2)
+            if articles_surveyed_bounded_total else None)
 
-    survey_by_year_raw: Counter = Counter()
-    for journal, years in searched_years_by_mapped.items():
-        for year in years:
-            survey_by_year_raw[year] += journal_counts.get(journal, {}).get(year, 0)
-    survey_by_year = {y: survey_by_year_raw.get(y, 0) for y in all_years}
-
-    survey_by_source = {}
-    survey_by_source_year = {}
-    for title, years in searched_years_by_source.items():
-        mapped = JOURNAL_COUNTS_NAME_MAP.get(title)
-        survey_by_source[title] = sum(journal_counts.get(mapped, {}).get(y, 0) for y in years)
-        survey_by_source_year[title] = {y: journal_counts.get(mapped, {}).get(y, 0) for y in years}
+    survey_by_source: dict = {}
+    survey_by_source_year: dict = {}
+    for title, mapped in JOURNAL_COUNTS_NAME_MAP.items():
+        year_map = {y: journal_counts.get(mapped, {}).get(y, 0) for y in all_years}
+        survey_by_source_year[title] = year_map
+        survey_by_source[title] = sum(year_map.values())
 
     return {
         "articles_surveyed_total"   : articles_surveyed_total,
@@ -634,6 +627,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .stat-card:last-child { border-right: none; }
   .stat-number { font-family: var(--font-display); font-size: 2.8rem; line-height: 1; letter-spacing: -0.03em; }
   .stat-label { font-size: 0.75rem; color: var(--grey-3); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.4rem; }
+  .stat-year-span { text-transform: none; letter-spacing: normal; color: var(--grey-3); }
 
   .source-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
   .source-table th { text-align: left; font-weight: 500; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grey-3); padding: 0.5rem 1rem 0.5rem 0; border-bottom: var(--rule); }
@@ -706,7 +700,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="stat-card"><div class="stat-number" id="stat-years">—</div><div class="stat-label">Year range</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-textile-metaphor">—</div><div class="stat-label">Metaphorical Textile texts</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-articles-surveyed">—</div><div class="stat-label">Articles surveyed</div></div>
-    <div class="stat-card"><div class="stat-number" id="stat-textile-rate">—</div><div class="stat-label">Textile metaphor rate</div></div>
+    <div class="stat-card"><div class="stat-number" id="stat-textile-rate">—</div><div class="stat-label">Textile metaphor rate <span class="stat-year-span"></span></div></div>
   </div>
   <br>
   <p class="chart-title">Sources in corpus</p>
@@ -819,13 +813,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <div class="chart-wrap">
-    <p class="chart-title">All Articles per Source</p>
+    <p class="chart-title">All Articles per Source <span class="stat-year-span"></span></p>
     <canvas id="chart-source-all" height="120"></canvas>
     <p class="chart-note">Total articles published.</p>
   </div>
 
   <div class="chart-wrap">
-    <p class="chart-title">Textile Metaphor rate by source</p>
+    <p class="chart-title">Textile Metaphor rate by source <span class="stat-year-span"></span></p>
     <canvas id="chart-source-rate" height="120"></canvas>
     <p class="chart-note">Textile Metaphor texts as a share of all articles published, by source. Sources without survey data are omitted.</p>
   </div>
@@ -908,6 +902,14 @@ document.getElementById('stat-articles-surveyed').textContent =
   DATA.articles_surveyed_total != null ? DATA.articles_surveyed_total.toLocaleString() : '—';
 document.getElementById('stat-textile-rate').textContent =
   DATA.textile_metaphor_rate_pct != null ? `${String(DATA.textile_metaphor_rate_pct).replace('.', ',')}%` : '—';
+
+// "Articles surveyed" / rate-by-source figures are bounded to the corpus's
+// own year range, not each journal's full lifetime — noted wherever that
+// isn't otherwise visible from a chart's own year axis.
+if (DATA.year_range[0]) {
+  const yearSpanText = `(${DATA.year_range[0]}–${DATA.year_range[1]})`;
+  document.querySelectorAll('.stat-year-span').forEach(el => el.textContent = yearSpanText);
+}
 
 const tbody = document.getElementById('source-tbody');
 DATA.sources.forEach(([j,n]) => {
@@ -1555,7 +1557,7 @@ def main() -> None:
     if JOURNAL_COUNTS_PATH.exists():
         print(f"Loading {JOURNAL_COUNTS_PATH} …")
         journal_counts = load_journal_counts(JOURNAL_COUNTS_PATH)
-        stats.update(compute_survey_coverage(all_rows, rows, journal_counts, stats["all_years"]))
+        stats.update(compute_survey_coverage(rows, journal_counts, stats["all_years"]))
         print(f"  Articles surveyed: {stats['articles_surveyed_total']}, "
               f"Textile Metaphor rate: {stats['textile_metaphor_rate_pct']}%.")
     else:

@@ -3,8 +3,8 @@ sources_count,,,,,7
 year_range_min,,,,,1981
 year_range_max,,,,,2026
 textile_metaphor_texts_total,,,,,177
-articles_surveyed_total,,,,,12404
-textile_metaphor_rate_pct,,,,,1.43
+articles_surveyed_total,,,,,15321
+textile_metaphor_rate_pct,,,,,1.24
 source_text_count,,,,Index of DH Conferences,53
 source_text_count,,,,Digital Humanities Quarterly,52
 source_text_count,,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,39
@@ -27,35 +27,35 @@ source_year_max,,,,Computers and Translation/Computers and the Humanities/Machin
 source_year_min,,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,1987
 source_year_max,,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,2026
 year_texts,1981,,,,1
-year_all_articles,1981,,,,26
+year_all_articles,1981,,,,46
 year_texts,1982,,,,0
-year_all_articles,1982,,,,27
+year_all_articles,1982,,,,52
 year_texts,1983,,,,0
-year_all_articles,1983,,,,19
+year_all_articles,1983,,,,140
 year_texts,1984,,,,0
 year_all_articles,1984,,,,26
 year_texts,1985,,,,0
-year_all_articles,1985,,,,33
+year_all_articles,1985,,,,138
 year_texts,1986,,,,0
 year_all_articles,1986,,,,112
 year_texts,1987,,,,1
-year_all_articles,1987,,,,112
+year_all_articles,1987,,,,231
 year_texts,1988,,,,1
-year_all_articles,1988,,,,62
+year_all_articles,1988,,,,98
 year_texts,1989,,,,0
-year_all_articles,1989,,,,139
+year_all_articles,1989,,,,283
 year_texts,1990,,,,3
-year_all_articles,1990,,,,131
+year_all_articles,1990,,,,203
 year_texts,1991,,,,0
-year_all_articles,1991,,,,116
+year_all_articles,1991,,,,245
 year_texts,1992,,,,0
-year_all_articles,1992,,,,49
+year_all_articles,1992,,,,177
 year_texts,1993,,,,2
-year_all_articles,1993,,,,101
+year_all_articles,1993,,,,207
 year_texts,1994,,,,3
-year_all_articles,1994,,,,100
+year_all_articles,1994,,,,264
 year_texts,1995,,,,1
-year_all_articles,1995,,,,99
+year_all_articles,1995,,,,180
 year_texts,1996,,,,1
 year_all_articles,1996,,,,234
 year_texts,1997,,,,1
@@ -65,15 +65,15 @@ year_all_articles,1998,,,,167
 year_texts,1999,,,,3
 year_all_articles,1999,,,,172
 year_texts,2000,,,,2
-year_all_articles,2000,,,,142
+year_all_articles,2000,,,,175
 year_texts,2001,,,,1
 year_all_articles,2001,,,,160
 year_texts,2002,,,,4
-year_all_articles,2002,,,,103
+year_all_articles,2002,,,,143
 year_texts,2003,,,,2
 year_all_articles,2003,,,,162
 year_texts,2004,,,,0
-year_all_articles,2004,,,,131
+year_all_articles,2004,,,,177
 year_texts,2005,,,,2
 year_all_articles,2005,,,,235
 year_texts,2006,,,,1
@@ -81,13 +81,13 @@ year_all_articles,2006,,,,229
 year_texts,2007,,,,3
 year_all_articles,2007,,,,187
 year_texts,2008,,,,0
-year_all_articles,2008,,,,206
+year_all_articles,2008,,,,229
 year_texts,2009,,,,6
 year_all_articles,2009,,,,306
 year_texts,2010,,,,3
 year_all_articles,2010,,,,204
 year_texts,2011,,,,3
-year_all_articles,2011,,,,282
+year_all_articles,2011,,,,288
 year_texts,2012,,,,5
 year_all_articles,2012,,,,332
 year_texts,2013,,,,8
@@ -95,29 +95,29 @@ year_all_articles,2013,,,,444
 year_texts,2014,,,,9
 year_all_articles,2014,,,,559
 year_texts,2015,,,,11
-year_all_articles,2015,,,,416
+year_all_articles,2015,,,,423
 year_texts,2016,,,,8
-year_all_articles,2016,,,,774
+year_all_articles,2016,,,,800
 year_texts,2017,,,,12
-year_all_articles,2017,,,,730
+year_all_articles,2017,,,,736
 year_texts,2018,,,,7
-year_all_articles,2018,,,,852
+year_all_articles,2018,,,,861
 year_texts,2019,,,,9
-year_all_articles,2019,,,,1000
+year_all_articles,2019,,,,1006
 year_texts,2020,,,,3
-year_all_articles,2020,,,,840
+year_all_articles,2020,,,,872
 year_texts,2021,,,,5
-year_all_articles,2021,,,,237
+year_all_articles,2021,,,,424
 year_texts,2022,,,,13
-year_all_articles,2022,,,,858
+year_all_articles,2022,,,,864
 year_texts,2023,,,,10
-year_all_articles,2023,,,,248
+year_all_articles,2023,,,,484
 year_texts,2024,,,,5
-year_all_articles,2024,,,,228
+year_all_articles,2024,,,,239
 year_texts,2025,,,,17
-year_all_articles,2025,,,,359
+year_all_articles,2025,,,,362
 year_texts,2026,,,,10
-year_all_articles,2026,,,,225
+year_all_articles,2026,,,,259
 year_word_hits,2017,stitch,,,2
 year_word_hits,2017,weave,,,5
 year_word_hits,2017,fabric,,,2
@@ -255,13 +255,13 @@ source_text_count_textile_metaphor,,,,Journal of Cultural Analytics,6
 source_text_count_textile_metaphor,,,,Index of DH Conferences,53
 source_text_count_textile_metaphor,,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,20
 source_text_count_textile_metaphor,,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,39
-source_all_articles,,,,Digital Classics Online,41
-source_all_articles,,,,Journal of the Text Encoding Initiative,125
+source_all_articles,,,,Index of DH Conferences,8537
 source_all_articles,,,,Digital Humanities Quarterly,855
-source_all_articles,,,,Journal of Cultural Analytics,25
-source_all_articles,,,,Index of DH Conferences,6998
-source_all_articles,,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,1830
-source_all_articles,,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,2530
+source_all_articles,,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,2698
+source_all_articles,,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,1808
+source_all_articles,,,,Journal of Cultural Analytics,96
+source_all_articles,,,,Journal of the Text Encoding Initiative,155
+source_all_articles,,,,Digital Classics Online,135
 source_year_texts,2017,,,Digital Classics Online,1
 source_year_texts,2013,,,Journal of the Text Encoding Initiative,2
 source_year_texts,2014,,,Journal of the Text Encoding Initiative,1
@@ -342,40 +342,21 @@ source_year_texts,2016,,,Literary and Linguistic Computing/Digital Scholarship i
 source_year_texts,2015,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,1
 source_year_texts,2017,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,1
 source_year_texts,2019,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,2
-source_year_all_articles,2017,,,Digital Classics Online,20
-source_year_all_articles,2018,,,Digital Classics Online,11
-source_year_all_articles,2019,,,Digital Classics Online,10
-source_year_all_articles,2016,,,Journal of the Text Encoding Initiative,14
-source_year_all_articles,2020,,,Journal of the Text Encoding Initiative,26
-source_year_all_articles,2024,,,Journal of the Text Encoding Initiative,23
-source_year_all_articles,2025,,,Journal of the Text Encoding Initiative,5
-source_year_all_articles,2012,,,Journal of the Text Encoding Initiative,15
-source_year_all_articles,2013,,,Journal of the Text Encoding Initiative,21
-source_year_all_articles,2014,,,Journal of the Text Encoding Initiative,21
-source_year_all_articles,2007,,,Digital Humanities Quarterly,14
-source_year_all_articles,2008,,,Digital Humanities Quarterly,6
-source_year_all_articles,2009,,,Digital Humanities Quarterly,59
-source_year_all_articles,2010,,,Digital Humanities Quarterly,10
-source_year_all_articles,2011,,,Digital Humanities Quarterly,20
-source_year_all_articles,2012,,,Digital Humanities Quarterly,29
-source_year_all_articles,2013,,,Digital Humanities Quarterly,30
-source_year_all_articles,2014,,,Digital Humanities Quarterly,28
-source_year_all_articles,2015,,,Digital Humanities Quarterly,34
-source_year_all_articles,2016,,,Digital Humanities Quarterly,48
-source_year_all_articles,2017,,,Digital Humanities Quarterly,71
-source_year_all_articles,2018,,,Digital Humanities Quarterly,57
-source_year_all_articles,2019,,,Digital Humanities Quarterly,32
-source_year_all_articles,2020,,,Digital Humanities Quarterly,67
-source_year_all_articles,2021,,,Digital Humanities Quarterly,68
-source_year_all_articles,2022,,,Digital Humanities Quarterly,72
-source_year_all_articles,2023,,,Digital Humanities Quarterly,76
-source_year_all_articles,2024,,,Digital Humanities Quarterly,43
-source_year_all_articles,2025,,,Digital Humanities Quarterly,49
-source_year_all_articles,2026,,,Digital Humanities Quarterly,42
-source_year_all_articles,2024,,,Journal of Cultural Analytics,4
-source_year_all_articles,2025,,,Journal of Cultural Analytics,6
-source_year_all_articles,2022,,,Journal of Cultural Analytics,7
-source_year_all_articles,2023,,,Journal of Cultural Analytics,8
+source_year_all_articles,1981,,,Index of DH Conferences,20
+source_year_all_articles,1982,,,Index of DH Conferences,25
+source_year_all_articles,1983,,,Index of DH Conferences,121
+source_year_all_articles,1984,,,Index of DH Conferences,0
+source_year_all_articles,1985,,,Index of DH Conferences,105
+source_year_all_articles,1986,,,Index of DH Conferences,0
+source_year_all_articles,1987,,,Index of DH Conferences,119
+source_year_all_articles,1988,,,Index of DH Conferences,0
+source_year_all_articles,1989,,,Index of DH Conferences,144
+source_year_all_articles,1990,,,Index of DH Conferences,72
+source_year_all_articles,1991,,,Index of DH Conferences,129
+source_year_all_articles,1992,,,Index of DH Conferences,79
+source_year_all_articles,1993,,,Index of DH Conferences,106
+source_year_all_articles,1994,,,Index of DH Conferences,164
+source_year_all_articles,1995,,,Index of DH Conferences,81
 source_year_all_articles,1996,,,Index of DH Conferences,147
 source_year_all_articles,1997,,,Index of DH Conferences,76
 source_year_all_articles,1998,,,Index of DH Conferences,109
@@ -401,59 +382,70 @@ source_year_all_articles,2017,,,Index of DH Conferences,530
 source_year_all_articles,2018,,,Index of DH Conferences,670
 source_year_all_articles,2019,,,Index of DH Conferences,832
 source_year_all_articles,2020,,,Index of DH Conferences,638
+source_year_all_articles,2021,,,Index of DH Conferences,154
 source_year_all_articles,2022,,,Index of DH Conferences,634
-source_year_all_articles,1978,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,46
-source_year_all_articles,1979,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,35
-source_year_all_articles,1981,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,26
-source_year_all_articles,1982,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,27
-source_year_all_articles,1983,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,19
-source_year_all_articles,1984,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,26
-source_year_all_articles,1985,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,33
-source_year_all_articles,1986,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,49
-source_year_all_articles,1987,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,26
-source_year_all_articles,1989,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,63
-source_year_all_articles,1990,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,56
-source_year_all_articles,1991,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,50
-source_year_all_articles,1992,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,49
-source_year_all_articles,1993,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,46
-source_year_all_articles,1994,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,42
-source_year_all_articles,1995,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,39
-source_year_all_articles,1996,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,44
-source_year_all_articles,1997,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,31
-source_year_all_articles,1998,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,23
-source_year_all_articles,1999,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,31
-source_year_all_articles,2000,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,38
-source_year_all_articles,2001,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,30
-source_year_all_articles,2002,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,31
-source_year_all_articles,2003,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,36
-source_year_all_articles,2004,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,26
-source_year_all_articles,2005,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,19
-source_year_all_articles,2006,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,26
-source_year_all_articles,2007,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,22
-source_year_all_articles,2009,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,20
-source_year_all_articles,2010,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,23
-source_year_all_articles,2011,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,27
-source_year_all_articles,2012,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,37
-source_year_all_articles,2013,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,58
-source_year_all_articles,2014,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,32
-source_year_all_articles,2015,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,33
-source_year_all_articles,2016,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,33
-source_year_all_articles,2017,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,41
-source_year_all_articles,2018,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,36
-source_year_all_articles,2019,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,33
-source_year_all_articles,2020,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,40
-source_year_all_articles,2021,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,47
-source_year_all_articles,2022,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,47
-source_year_all_articles,2023,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,67
-source_year_all_articles,2024,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,52
-source_year_all_articles,2025,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,155
-source_year_all_articles,2026,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,60
+source_year_all_articles,2023,,,Index of DH Conferences,220
+source_year_all_articles,2024,,,Index of DH Conferences,0
+source_year_all_articles,2025,,,Index of DH Conferences,0
+source_year_all_articles,2026,,,Index of DH Conferences,0
+source_year_all_articles,1981,,,Digital Humanities Quarterly,0
+source_year_all_articles,1982,,,Digital Humanities Quarterly,0
+source_year_all_articles,1983,,,Digital Humanities Quarterly,0
+source_year_all_articles,1984,,,Digital Humanities Quarterly,0
+source_year_all_articles,1985,,,Digital Humanities Quarterly,0
+source_year_all_articles,1986,,,Digital Humanities Quarterly,0
+source_year_all_articles,1987,,,Digital Humanities Quarterly,0
+source_year_all_articles,1988,,,Digital Humanities Quarterly,0
+source_year_all_articles,1989,,,Digital Humanities Quarterly,0
+source_year_all_articles,1990,,,Digital Humanities Quarterly,0
+source_year_all_articles,1991,,,Digital Humanities Quarterly,0
+source_year_all_articles,1992,,,Digital Humanities Quarterly,0
+source_year_all_articles,1993,,,Digital Humanities Quarterly,0
+source_year_all_articles,1994,,,Digital Humanities Quarterly,0
+source_year_all_articles,1995,,,Digital Humanities Quarterly,0
+source_year_all_articles,1996,,,Digital Humanities Quarterly,0
+source_year_all_articles,1997,,,Digital Humanities Quarterly,0
+source_year_all_articles,1998,,,Digital Humanities Quarterly,0
+source_year_all_articles,1999,,,Digital Humanities Quarterly,0
+source_year_all_articles,2000,,,Digital Humanities Quarterly,0
+source_year_all_articles,2001,,,Digital Humanities Quarterly,0
+source_year_all_articles,2002,,,Digital Humanities Quarterly,0
+source_year_all_articles,2003,,,Digital Humanities Quarterly,0
+source_year_all_articles,2004,,,Digital Humanities Quarterly,0
+source_year_all_articles,2005,,,Digital Humanities Quarterly,0
+source_year_all_articles,2006,,,Digital Humanities Quarterly,0
+source_year_all_articles,2007,,,Digital Humanities Quarterly,14
+source_year_all_articles,2008,,,Digital Humanities Quarterly,6
+source_year_all_articles,2009,,,Digital Humanities Quarterly,59
+source_year_all_articles,2010,,,Digital Humanities Quarterly,10
+source_year_all_articles,2011,,,Digital Humanities Quarterly,20
+source_year_all_articles,2012,,,Digital Humanities Quarterly,29
+source_year_all_articles,2013,,,Digital Humanities Quarterly,30
+source_year_all_articles,2014,,,Digital Humanities Quarterly,28
+source_year_all_articles,2015,,,Digital Humanities Quarterly,34
+source_year_all_articles,2016,,,Digital Humanities Quarterly,48
+source_year_all_articles,2017,,,Digital Humanities Quarterly,71
+source_year_all_articles,2018,,,Digital Humanities Quarterly,57
+source_year_all_articles,2019,,,Digital Humanities Quarterly,32
+source_year_all_articles,2020,,,Digital Humanities Quarterly,67
+source_year_all_articles,2021,,,Digital Humanities Quarterly,68
+source_year_all_articles,2022,,,Digital Humanities Quarterly,72
+source_year_all_articles,2023,,,Digital Humanities Quarterly,76
+source_year_all_articles,2024,,,Digital Humanities Quarterly,43
+source_year_all_articles,2025,,,Digital Humanities Quarterly,49
+source_year_all_articles,2026,,,Digital Humanities Quarterly,42
+source_year_all_articles,1981,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,0
+source_year_all_articles,1982,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,0
+source_year_all_articles,1983,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,0
+source_year_all_articles,1984,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,0
+source_year_all_articles,1985,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,0
 source_year_all_articles,1986,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,63
 source_year_all_articles,1987,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,86
 source_year_all_articles,1988,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,62
 source_year_all_articles,1989,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,76
 source_year_all_articles,1990,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,75
 source_year_all_articles,1991,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,66
+source_year_all_articles,1992,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,49
 source_year_all_articles,1993,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,55
 source_year_all_articles,1994,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,58
 source_year_all_articles,1995,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,60
@@ -461,8 +453,11 @@ source_year_all_articles,1996,,,Literary and Linguistic Computing/Digital Schola
 source_year_all_articles,1997,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,42
 source_year_all_articles,1998,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,35
 source_year_all_articles,1999,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,39
+source_year_all_articles,2000,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,33
 source_year_all_articles,2001,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,36
+source_year_all_articles,2002,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,40
 source_year_all_articles,2003,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,43
+source_year_all_articles,2004,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,46
 source_year_all_articles,2005,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,77
 source_year_all_articles,2006,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,52
 source_year_all_articles,2007,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,45
@@ -485,6 +480,190 @@ source_year_all_articles,2023,,,Literary and Linguistic Computing/Digital Schola
 source_year_all_articles,2024,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,106
 source_year_all_articles,2025,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,144
 source_year_all_articles,2026,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,123
+source_year_all_articles,1981,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,26
+source_year_all_articles,1982,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,27
+source_year_all_articles,1983,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,19
+source_year_all_articles,1984,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,26
+source_year_all_articles,1985,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,33
+source_year_all_articles,1986,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,49
+source_year_all_articles,1987,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,26
+source_year_all_articles,1988,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,36
+source_year_all_articles,1989,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,63
+source_year_all_articles,1990,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,56
+source_year_all_articles,1991,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,50
+source_year_all_articles,1992,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,49
+source_year_all_articles,1993,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,46
+source_year_all_articles,1994,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,42
+source_year_all_articles,1995,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,39
+source_year_all_articles,1996,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,44
+source_year_all_articles,1997,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,31
+source_year_all_articles,1998,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,23
+source_year_all_articles,1999,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,31
+source_year_all_articles,2000,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,38
+source_year_all_articles,2001,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,30
+source_year_all_articles,2002,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,31
+source_year_all_articles,2003,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,36
+source_year_all_articles,2004,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,26
+source_year_all_articles,2005,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,19
+source_year_all_articles,2006,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,26
+source_year_all_articles,2007,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,22
+source_year_all_articles,2008,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,23
+source_year_all_articles,2009,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,20
+source_year_all_articles,2010,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,23
+source_year_all_articles,2011,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,27
+source_year_all_articles,2012,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,37
+source_year_all_articles,2013,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,58
+source_year_all_articles,2014,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,32
+source_year_all_articles,2015,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,33
+source_year_all_articles,2016,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,33
+source_year_all_articles,2017,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,41
+source_year_all_articles,2018,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,36
+source_year_all_articles,2019,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,33
+source_year_all_articles,2020,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,40
+source_year_all_articles,2021,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,47
+source_year_all_articles,2022,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,47
+source_year_all_articles,2023,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,67
+source_year_all_articles,2024,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,52
+source_year_all_articles,2025,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,155
+source_year_all_articles,2026,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,60
+source_year_all_articles,1981,,,Journal of Cultural Analytics,0
+source_year_all_articles,1982,,,Journal of Cultural Analytics,0
+source_year_all_articles,1983,,,Journal of Cultural Analytics,0
+source_year_all_articles,1984,,,Journal of Cultural Analytics,0
+source_year_all_articles,1985,,,Journal of Cultural Analytics,0
+source_year_all_articles,1986,,,Journal of Cultural Analytics,0
+source_year_all_articles,1987,,,Journal of Cultural Analytics,0
+source_year_all_articles,1988,,,Journal of Cultural Analytics,0
+source_year_all_articles,1989,,,Journal of Cultural Analytics,0
+source_year_all_articles,1990,,,Journal of Cultural Analytics,0
+source_year_all_articles,1991,,,Journal of Cultural Analytics,0
+source_year_all_articles,1992,,,Journal of Cultural Analytics,0
+source_year_all_articles,1993,,,Journal of Cultural Analytics,0
+source_year_all_articles,1994,,,Journal of Cultural Analytics,0
+source_year_all_articles,1995,,,Journal of Cultural Analytics,0
+source_year_all_articles,1996,,,Journal of Cultural Analytics,0
+source_year_all_articles,1997,,,Journal of Cultural Analytics,0
+source_year_all_articles,1998,,,Journal of Cultural Analytics,0
+source_year_all_articles,1999,,,Journal of Cultural Analytics,0
+source_year_all_articles,2000,,,Journal of Cultural Analytics,0
+source_year_all_articles,2001,,,Journal of Cultural Analytics,0
+source_year_all_articles,2002,,,Journal of Cultural Analytics,0
+source_year_all_articles,2003,,,Journal of Cultural Analytics,0
+source_year_all_articles,2004,,,Journal of Cultural Analytics,0
+source_year_all_articles,2005,,,Journal of Cultural Analytics,0
+source_year_all_articles,2006,,,Journal of Cultural Analytics,0
+source_year_all_articles,2007,,,Journal of Cultural Analytics,0
+source_year_all_articles,2008,,,Journal of Cultural Analytics,0
+source_year_all_articles,2009,,,Journal of Cultural Analytics,0
+source_year_all_articles,2010,,,Journal of Cultural Analytics,0
+source_year_all_articles,2011,,,Journal of Cultural Analytics,0
+source_year_all_articles,2012,,,Journal of Cultural Analytics,0
+source_year_all_articles,2013,,,Journal of Cultural Analytics,0
+source_year_all_articles,2014,,,Journal of Cultural Analytics,0
+source_year_all_articles,2015,,,Journal of Cultural Analytics,0
+source_year_all_articles,2016,,,Journal of Cultural Analytics,6
+source_year_all_articles,2017,,,Journal of Cultural Analytics,6
+source_year_all_articles,2018,,,Journal of Cultural Analytics,9
+source_year_all_articles,2019,,,Journal of Cultural Analytics,6
+source_year_all_articles,2020,,,Journal of Cultural Analytics,20
+source_year_all_articles,2021,,,Journal of Cultural Analytics,15
+source_year_all_articles,2022,,,Journal of Cultural Analytics,7
+source_year_all_articles,2023,,,Journal of Cultural Analytics,8
+source_year_all_articles,2024,,,Journal of Cultural Analytics,4
+source_year_all_articles,2025,,,Journal of Cultural Analytics,6
+source_year_all_articles,2026,,,Journal of Cultural Analytics,9
+source_year_all_articles,1981,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1982,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1983,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1984,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1985,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1986,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1987,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1988,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1989,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1990,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1991,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1992,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1993,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1994,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1995,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1996,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1997,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1998,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,1999,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2000,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2001,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2002,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2003,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2004,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2005,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2006,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2007,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2008,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2009,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2010,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2011,,,Journal of the Text Encoding Initiative,6
+source_year_all_articles,2012,,,Journal of the Text Encoding Initiative,15
+source_year_all_articles,2013,,,Journal of the Text Encoding Initiative,21
+source_year_all_articles,2014,,,Journal of the Text Encoding Initiative,21
+source_year_all_articles,2015,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2016,,,Journal of the Text Encoding Initiative,14
+source_year_all_articles,2017,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2018,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2019,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2020,,,Journal of the Text Encoding Initiative,26
+source_year_all_articles,2021,,,Journal of the Text Encoding Initiative,13
+source_year_all_articles,2022,,,Journal of the Text Encoding Initiative,0
+source_year_all_articles,2023,,,Journal of the Text Encoding Initiative,7
+source_year_all_articles,2024,,,Journal of the Text Encoding Initiative,23
+source_year_all_articles,2025,,,Journal of the Text Encoding Initiative,5
+source_year_all_articles,2026,,,Journal of the Text Encoding Initiative,4
+source_year_all_articles,1981,,,Digital Classics Online,0
+source_year_all_articles,1982,,,Digital Classics Online,0
+source_year_all_articles,1983,,,Digital Classics Online,0
+source_year_all_articles,1984,,,Digital Classics Online,0
+source_year_all_articles,1985,,,Digital Classics Online,0
+source_year_all_articles,1986,,,Digital Classics Online,0
+source_year_all_articles,1987,,,Digital Classics Online,0
+source_year_all_articles,1988,,,Digital Classics Online,0
+source_year_all_articles,1989,,,Digital Classics Online,0
+source_year_all_articles,1990,,,Digital Classics Online,0
+source_year_all_articles,1991,,,Digital Classics Online,0
+source_year_all_articles,1992,,,Digital Classics Online,0
+source_year_all_articles,1993,,,Digital Classics Online,0
+source_year_all_articles,1994,,,Digital Classics Online,0
+source_year_all_articles,1995,,,Digital Classics Online,0
+source_year_all_articles,1996,,,Digital Classics Online,0
+source_year_all_articles,1997,,,Digital Classics Online,0
+source_year_all_articles,1998,,,Digital Classics Online,0
+source_year_all_articles,1999,,,Digital Classics Online,0
+source_year_all_articles,2000,,,Digital Classics Online,0
+source_year_all_articles,2001,,,Digital Classics Online,0
+source_year_all_articles,2002,,,Digital Classics Online,0
+source_year_all_articles,2003,,,Digital Classics Online,0
+source_year_all_articles,2004,,,Digital Classics Online,0
+source_year_all_articles,2005,,,Digital Classics Online,0
+source_year_all_articles,2006,,,Digital Classics Online,0
+source_year_all_articles,2007,,,Digital Classics Online,0
+source_year_all_articles,2008,,,Digital Classics Online,0
+source_year_all_articles,2009,,,Digital Classics Online,0
+source_year_all_articles,2010,,,Digital Classics Online,0
+source_year_all_articles,2011,,,Digital Classics Online,0
+source_year_all_articles,2012,,,Digital Classics Online,0
+source_year_all_articles,2013,,,Digital Classics Online,0
+source_year_all_articles,2014,,,Digital Classics Online,0
+source_year_all_articles,2015,,,Digital Classics Online,7
+source_year_all_articles,2016,,,Digital Classics Online,20
+source_year_all_articles,2017,,,Digital Classics Online,20
+source_year_all_articles,2018,,,Digital Classics Online,11
+source_year_all_articles,2019,,,Digital Classics Online,10
+source_year_all_articles,2020,,,Digital Classics Online,12
+source_year_all_articles,2021,,,Digital Classics Online,5
+source_year_all_articles,2022,,,Digital Classics Online,6
+source_year_all_articles,2023,,,Digital Classics Online,9
+source_year_all_articles,2024,,,Digital Classics Online,11
+source_year_all_articles,2025,,,Digital Classics Online,3
+source_year_all_articles,2026,,,Digital Classics Online,21
 textile_cooccurrence,,stitch,together,,34
 textile_cooccurrence,,stitch,rti,,6
 textile_cooccurrence,,stitch,individual,,6
