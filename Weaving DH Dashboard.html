@@ -164,6 +164,24 @@
     <canvas id="chart-year-textile" height="160"></canvas>
     <p class="chart-note">Absolute hits per year, by textile word.</p>
   </div>
+
+  <div class="chart-wrap">
+    <p class="chart-title">Textile word hit rate per year, by word</p>
+    <canvas id="chart-year-hits-rate" height="200"></canvas>
+    <p class="chart-note">Each textile word's hits as a share of all articles published that year. Years without survey data are omitted.</p>
+  </div>
+
+  <div class="chart-wrap">
+    <p class="chart-title">Textile word hits vs. all articles, by word (log scale)</p>
+    <canvas id="chart-year-hits-log" height="200"></canvas>
+    <p class="chart-note">Each word plotted against all articles (context, grey) on a shared logarithmic axis, so growth across words of very different frequency is directly comparable. Years with zero hits for a given word are omitted — undefined on a log scale.</p>
+  </div>
+
+  <div class="chart-wrap">
+    <p class="chart-title">Indexed growth, by word</p>
+    <canvas id="chart-year-hits-indexed" height="200"></canvas>
+    <p class="chart-note">Each word (and all articles, for context) rebased to 100 in its own first year with a nonzero count, showing relative growth from each word's own starting point rather than absolute scale.</p>
+  </div>
 </section>
 
 <section id="vocabulary">
@@ -476,6 +494,112 @@ function makeStacked(canvasId, words, yearData) {
   });
 }
 makeStacked('chart-year-textile', DATA.textile_words, DATA.year_textile);
+
+// Per-word (not aggregated) versions of the rate/log/indexed pattern used
+// above for texts-per-year: one line per textile word, plus "All articles"
+// as a grey context line where the chart type allows a shared basis.
+const hitsByWord = w => DATA.all_years.map(y => (DATA.year_textile[y] || {})[w] || 0);
+
+new Chart(document.getElementById('chart-year-hits-rate'), {
+  type: 'line',
+  data: {
+    labels: DATA.all_years,
+    datasets: DATA.textile_words.map((w, i) => {
+      const hits = hitsByWord(w);
+      return {
+        label: w,
+        data: DATA.all_years.map((y, idx) => {
+          const total = DATA.survey_by_year[y] || 0;
+          return total > 0 ? hits[idx] / total * 100 : null;
+        }),
+        borderColor: color(i), backgroundColor: color(i),
+        spanGaps: false, tension: 0.25, pointRadius: 1.5, borderWidth: 1.5,
+      };
+    })
+  },
+  options: {
+    plugins: {
+      legend: { position:'right', labels:{boxWidth:10,padding:8,font:{size:10}} },
+      tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${String(Math.round(ctx.parsed.y*10)/10).replace('.', ',')}%` } },
+    },
+    scales: {
+      x: { grid:GRID, ticks:TICKS },
+      y: { grid:GRID, ticks:{ ...TICKS, callback: v => `${v}%` }, beginAtZero:true },
+    }
+  }
+});
+
+new Chart(document.getElementById('chart-year-hits-log'), {
+  type: 'line',
+  data: {
+    labels: DATA.all_years,
+    datasets: [
+      {
+        label: 'All articles',
+        data: DATA.all_years.map(y => DATA.survey_by_year[y] || null),
+        borderColor: '#c8c8c8', backgroundColor: '#c8c8c8',
+        spanGaps: false, tension: 0.25, pointRadius: 1.5, borderWidth: 2,
+      },
+      ...DATA.textile_words.map((w, i) => ({
+        label: w,
+        data: hitsByWord(w).map(v => v || null),
+        borderColor: color(i), backgroundColor: color(i),
+        spanGaps: false, tension: 0.25, pointRadius: 1.5, borderWidth: 1.5,
+      })),
+    ]
+  },
+  options: {
+    plugins: { legend: { position:'right', labels:{boxWidth:10,padding:8,font:{size:10}} } },
+    scales: {
+      x: { grid:GRID, ticks:TICKS },
+      y: { type:'logarithmic', grid:GRID, ticks:TICKS },
+    }
+  }
+});
+
+// Each series rebased to 100 in its own first year with a nonzero value —
+// not one shared baseline year — since different words enter the corpus in
+// different years. Years before a series' own baseline are left null.
+(function(){
+  const indexFrom = series => {
+    const baseIdx = series.findIndex(v => v > 0);
+    if (baseIdx === -1) return null;
+    const base = series[baseIdx];
+    return series.map((v, i) => i < baseIdx ? null : Math.round(v / base * 1000) / 10);
+  };
+
+  const allSeries = DATA.all_years.map(y => DATA.survey_by_year[y] || 0);
+  const datasets  = [];
+  const allIndexed = indexFrom(allSeries);
+  if (allIndexed) {
+    datasets.push({
+      label: 'All articles', data: allIndexed,
+      borderColor: '#c8c8c8', backgroundColor: '#c8c8c8',
+      tension: 0.25, pointRadius: 1.5, borderWidth: 2,
+    });
+  }
+  DATA.textile_words.forEach((w, i) => {
+    const wordIndexed = indexFrom(hitsByWord(w));
+    if (!wordIndexed) return;
+    datasets.push({
+      label: w, data: wordIndexed,
+      borderColor: color(i), backgroundColor: color(i),
+      tension: 0.25, pointRadius: 1.5, borderWidth: 1.5,
+    });
+  });
+
+  new Chart(document.getElementById('chart-year-hits-indexed'), {
+    type: 'line',
+    data: { labels: DATA.all_years, datasets },
+    options: {
+      plugins: { legend: { position:'right', labels:{boxWidth:10,padding:8,font:{size:10}} } },
+      scales: {
+        x: { grid:GRID, ticks:TICKS },
+        y: { grid:GRID, ticks:TICKS, beginAtZero:true },
+      }
+    }
+  });
+})();
 
 // ── Frequency (horizontal bar) ────────────────────────────────────
 function makeFreq(canvasId, freqData) {
