@@ -623,6 +623,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <p class="chart-note">Textile Metaphor texts as a share of all articles published that year. Years without survey data are omitted.</p>
   </div>
 
+  <div class="chart-wrap">
+    <p class="chart-title">Textile Metaphor texts vs. all articles (log scale)</p>
+    <canvas id="chart-year-log" height="100"></canvas>
+    <p class="chart-note">Both series on a shared logarithmic axis, so their growth is directly comparable despite the difference in magnitude. Years with zero Textile Metaphor texts are omitted — undefined on a log scale.</p>
+  </div>
+
   <p class="subsection-title">Textile word hits per year</p>
   <div class="chart-wrap">
     <p class="chart-title">By word</p>
@@ -842,6 +848,40 @@ new Chart(document.getElementById('chart-year-rate'), {
     scales: {
       x: { grid:GRID, ticks:TICKS },
       y: { grid:GRID, ticks:{ ...TICKS, callback: v => `${v}%` }, beginAtZero:true },
+    }
+  }
+});
+
+// Both series on one logarithmic axis: a linear axis would flatten the
+// smaller Textile Metaphor series to invisibility next to total article
+// counts, but a shared log axis makes their growth curves comparable. A
+// value of 0 has no logarithm, so zero-count years become null (a gap).
+new Chart(document.getElementById('chart-year-log'), {
+  type: 'line',
+  data: {
+    labels: DATA.all_years,
+    datasets: [
+      {
+        label: 'All articles',
+        data: DATA.all_years.map(y => DATA.survey_by_year[y] || null),
+        borderColor: '#c8c8c8',
+        backgroundColor: '#c8c8c8',
+        spanGaps: false, tension: 0.25, pointRadius: 2,
+      },
+      {
+        label: 'Textile Metaphor texts',
+        data: DATA.all_years.map(y => DATA.year_counts[y] || null),
+        borderColor: '#2563a8',
+        backgroundColor: '#2563a8',
+        spanGaps: false, tension: 0.25, pointRadius: 2,
+      },
+    ]
+  },
+  options: {
+    plugins: { legend: { position:'top', align:'end', labels:{boxWidth:10,padding:8,font:{size:10}} } },
+    scales: {
+      x: { grid:GRID, ticks:TICKS },
+      y: { type:'logarithmic', grid:GRID, ticks:TICKS },
     }
   }
 });
