@@ -14,8 +14,11 @@ Inputs (CSV, see Configuration below):
     independent of this corpus. Used only to contextualise the corpus against
     overall publication volume (see build_stats vs. compute_survey_coverage).
 
-Output: a single HTML file with the computed statistics embedded as JSON and
-rendered client-side with Chart.js.
+Output:
+  * A single HTML file (OUTPUT_PATH) with the computed statistics embedded as
+    JSON and rendered client-side with Chart.js.
+  * A standalone CSV (STATISTICS_CSV_PATH) with every statistic shown in the
+    dashboard, in tidy long format, for sharing without KWIC/concordance text.
 
 Counting conventions:
   * Rows flagged as a "doublette" in further_notes are dropped before anything
@@ -290,6 +293,7 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
     year_colloc_textile: defaultdict = defaultdict(lambda: defaultdict(Counter))
 
     source_textile_by_cat : defaultdict = defaultdict(lambda: defaultdict(int))
+    source_year_counts    : defaultdict = defaultdict(Counter)
 
     textile_metaphor_texts   : int = 0
 
@@ -319,6 +323,7 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
             sources[source] += 1
             if year:
                 source_years[source].append(year)
+                source_year_counts[source][year] += 1
 
         for w in t_words:
             w = textile_canonical(w)
@@ -373,6 +378,9 @@ def build_stats(rows: list[dict], clean_rows: Optional[list[dict]] = None) -> di
         "source_textile_by_cat"  : {
             s: dict(cats) for s, cats in source_textile_by_cat.items()
         },
+        "source_year_counts"     : {
+            s: dict(c) for s, c in source_year_counts.items()
+        },
         "construction_texts"     : construction_texts,
     }
 
@@ -421,9 +429,11 @@ def compute_survey_coverage(all_rows: list[dict], rows: list[dict],
         published in those years (the search population).
       * textile_metaphor_rate_pct — Textile Metaphor texts among the matched
         journals, as a percentage of articles_surveyed_total.
-      * survey_by_year   — {year: total articles}, aligned with all_years.
-      * survey_by_source — {journal_title: total articles}, keyed like
+      * survey_by_year        — {year: total articles}, aligned with all_years.
+      * survey_by_source      — {journal_title: total articles}, keyed like
         DATA.sources for the per-source chart.
+      * survey_by_source_year — {journal_title: {year: total articles}}, for
+        the per-source rate-over-time chart.
     """
     searched_years_by_mapped: defaultdict = defaultdict(set)
     searched_years_by_source: defaultdict = defaultdict(set)
@@ -460,19 +470,113 @@ def compute_survey_coverage(all_rows: list[dict], rows: list[dict],
     survey_by_year = {y: survey_by_year_raw.get(y, 0) for y in all_years}
 
     survey_by_source = {}
+    survey_by_source_year = {}
     for title, years in searched_years_by_source.items():
         mapped = JOURNAL_COUNTS_NAME_MAP.get(title)
         survey_by_source[title] = sum(journal_counts.get(mapped, {}).get(y, 0) for y in years)
+        survey_by_source_year[title] = {y: journal_counts.get(mapped, {}).get(y, 0) for y in years}
 
     return {
         "articles_surveyed_total"   : articles_surveyed_total,
         "textile_metaphor_rate_pct" : rate,
         "survey_by_year"            : survey_by_year,
         "survey_by_source"          : survey_by_source,
+        "survey_by_source_year"     : survey_by_source_year,
     }
 
 # ---------------------------------------------------------------------------
-# 5.  HTML template
+# 5.  Statistics CSV export
+# ---------------------------------------------------------------------------
+
+STATISTICS_CSV_PATH   = Path("statistics.csv")
+STATISTICS_CSV_HEADER = ["metric", "year", "word", "related_word", "source", "value"]
+
+def build_statistics_rows(stats: dict) -> list[list]:
+    """
+    Flatten every statistic shown in the dashboard into a tidy long-format
+    table: one row per (metric, dimensions) with a single `value` column.
+    Dimensions that don't apply to a given metric are left blank. Excludes
+    anything not surfaced in the dashboard (e.g. construction_texts, which is
+    console-only) and all KWIC/concordance text.
+    """
+    rows: list[list] = []
+
+    def add(metric, value, *, year="", word="", related_word="", source=""):
+        rows.append([metric, year, word, related_word, source, value])
+
+    add("sources_count", len(stats["sources"]))
+    add("year_range_min", stats["year_range"][0])
+    add("year_range_max", stats["year_range"][1])
+    add("textile_metaphor_texts_total", stats["textile_metaphor_texts"])
+    add("articles_surveyed_total", stats.get("articles_surveyed_total"))
+    add("textile_metaphor_rate_pct", stats.get("textile_metaphor_rate_pct"))
+
+    for source, count in stats["sources"]:
+        add("source_text_count", count, source=source)
+    for source, (y_min, y_max) in stats["source_years"].items():
+        add("source_year_min", y_min, source=source)
+        add("source_year_max", y_max, source=source)
+
+    survey_by_year = stats.get("survey_by_year", {})
+    for year in stats["all_years"]:
+        add("year_texts", stats["year_counts"].get(year, 0), year=year)
+        add("year_all_articles", survey_by_year.get(year, 0), year=year)
+
+    for year, words in stats["year_textile"].items():
+        for word, count in words.items():
+            add("year_word_hits", count, year=year, word=word)
+
+    for word, count in stats["textile_freq"]:
+        add("word_freq_corpus", count, word=word)
+
+    for word, variants in stats["textile_variants"].items():
+        add("word_variants", variants, word=word)
+
+    for source, cats in stats["source_textile_by_cat"].items():
+        add("source_text_count_textile_metaphor", cats.get("Textile Metaphor", 0), source=source)
+
+    for source, count in stats.get("survey_by_source", {}).items():
+        add("source_all_articles", count, source=source)
+
+    for source, years in stats.get("source_year_counts", {}).items():
+        for year, count in years.items():
+            add("source_year_texts", count, source=source, year=year)
+
+    for source, years in stats.get("survey_by_source_year", {}).items():
+        for year, count in years.items():
+            add("source_year_all_articles", count, source=source, year=year)
+
+    for word, pairs in stats["textile_cooc"].items():
+        for related_word, count in pairs:
+            add("textile_cooccurrence", count, word=word, related_word=related_word)
+
+    for word, pairs in stats["textile_colloc"].items():
+        for related_word, count in pairs:
+            add("textile_collocation", count, word=word, related_word=related_word)
+
+    for word, lemmas in stats["year_cooc_textile"].items():
+        for related_word, year_map in lemmas.items():
+            for year, value in year_map.items():
+                add("year_cooccurrence_rate", value, word=word, related_word=related_word, year=year)
+
+    for word, lemmas in stats["year_colloc_textile"].items():
+        for related_word, year_map in lemmas.items():
+            for year, value in year_map.items():
+                add("year_collocation_rate", value, word=word, related_word=related_word, year=year)
+
+    return rows
+
+def write_statistics_csv(stats: dict, path: Path) -> None:
+    """Write every statistic shown in the dashboard to a standalone CSV, for
+    sharing the underlying numbers independent of the HTML output."""
+    rows = build_statistics_rows(stats)
+    with open(path, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(STATISTICS_CSV_HEADER)
+        writer.writerows(rows)
+
+# ---------------------------------------------------------------------------
+# 6.  HTML template
 # ---------------------------------------------------------------------------
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
@@ -512,9 +616,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .header-logo { width: 120px; height: 120px; object-fit: cover; flex-shrink: 0; border: var(--rule); }
 
   nav { border-bottom: var(--rule); padding: 0.75rem 0; position: sticky; top: 0; background: var(--white); z-index: 100; }
-  nav ul { display: flex; gap: 2rem; list-style: none; flex-wrap: wrap; }
+  nav ul { display: flex; align-items: center; gap: 2rem; list-style: none; flex-wrap: wrap; }
   nav a { font-size: 0.8rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--grey-2); text-decoration: none; }
   nav a:hover { color: var(--black); }
+  nav .nav-github { margin-left: auto; }
+  nav .nav-github a { display: flex; align-items: center; gap: 0.4rem; }
 
   section { padding: 3.5rem 0; border-bottom: var(--rule); }
   section:last-of-type { border-bottom: none; }
@@ -580,6 +686,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <li><a href="#sources">Sources</a></li>
     <li><a href="#cooccurrence">Context</a></li>
     <li><a href="#methodology">Notes</a></li>
+    <li class="nav-github">
+      <a href="https://github.com/laurauntner/weaving-dh" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository" title="GitHub repository">
+        <svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0c-4.42 0-8 3.58-8 8a8.013 8.013 0 0 0 5.47 7.59c.4.08.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span>GitHub Repository</span>
+      </a>
+    </li>
   </ul>
 </nav>
 
@@ -678,6 +790,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <p class="chart-note">Absolute hits per year for the selected word.</p>
     </div>
   </div>
+
+  <div class="chart-row">
+    <div class="chart-wrap">
+      <p class="chart-title">Relative frequency across corpus</p>
+      <canvas id="chart-textile-freq-rel"></canvas>
+      <p class="chart-note">Each word's hits as a share of Textile Metaphor texts in the corpus.</p>
+    </div>
+    <div class="chart-wrap">
+      <p class="chart-title">Relative temporal distribution — select word</p>
+      <div class="tab-group" id="tabs-textile-rel"></div>
+      <canvas id="chart-textile-word-time-rel" height="160"></canvas>
+      <p class="chart-note">Selected word's hits as a share of all articles published that year. Years without survey data are omitted.</p>
+    </div>
+  </div>
 </section>
 
 <section id="sources">
@@ -694,6 +820,30 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <canvas id="chart-source-all" height="160"></canvas>
       <p class="chart-note">Total articles published.</p>
     </div>
+  </div>
+
+  <div class="chart-wrap">
+    <p class="chart-title">Textile Metaphor rate by source</p>
+    <canvas id="chart-source-rate" height="120"></canvas>
+    <p class="chart-note">Textile Metaphor texts as a share of all articles published, by source. Sources without survey data are omitted.</p>
+  </div>
+
+  <div class="chart-wrap">
+    <p class="chart-title">Textile Metaphor rate per year, by source</p>
+    <canvas id="chart-source-rate-timeline" height="200"></canvas>
+    <p class="chart-note">Each source's Textile Metaphor texts as a share of its own articles published that year. Years without survey data for a source are omitted.</p>
+  </div>
+
+  <div class="chart-wrap">
+    <p class="chart-title">Textile Metaphor texts vs. all articles, by source (log scale)</p>
+    <canvas id="chart-source-log" height="200"></canvas>
+    <p class="chart-note">Each source's Textile Metaphor text count plotted against total articles (context, grey) on a shared logarithmic axis, so growth across sources of very different output is directly comparable. Years with zero texts for a given source are omitted — undefined on a log scale.</p>
+  </div>
+
+  <div class="chart-wrap">
+    <p class="chart-title">Indexed growth, by source</p>
+    <canvas id="chart-source-indexed" height="200"></canvas>
+    <p class="chart-note">Each source (and all articles, for context) rebased to 100 in its own first year with a nonzero count, showing relative growth from each source's own starting point rather than absolute scale.</p>
   </div>
 </section>
 
@@ -821,6 +971,136 @@ document.getElementById('textile-variants-note').textContent =
       }
     }
   });
+
+  // Textile Metaphor texts as a percentage of each source's total articles —
+  // the relative counterpart to the two absolute-count charts above.
+  new Chart(document.getElementById('chart-source-rate'), {
+    type: 'bar',
+    data: {
+      labels: sources,
+      datasets: [{
+        data: sources.map(s => {
+          const total = DATA.survey_by_source[s] || 0;
+          const texts = (DATA.source_textile_by_cat[s]||{})['Textile Metaphor'] || 0;
+          return total > 0 ? texts / total * 100 : null;
+        }),
+        backgroundColor: '#2563a8',
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      plugins:{
+        legend:{ display:false },
+        tooltip:{ callbacks:{ label: ctx => `${String(Math.round(ctx.parsed.y*10)/10).replace('.', ',')}%` } },
+      },
+      scales:{
+        x:{ grid:GRID, ticks:{ ...TICKS, maxRotation:30, font:{size:10} } },
+        y:{ grid:GRID, ticks:{ ...TICKS, callback: v => `${v}%` }, beginAtZero:true }
+      }
+    }
+  });
+
+  // Same rate, broken out per year and per source — one line per source,
+  // colour-matched to the by-word timeline charts above.
+  new Chart(document.getElementById('chart-source-rate-timeline'), {
+    type: 'line',
+    data: {
+      labels: DATA.all_years,
+      datasets: sources.map((s, i) => ({
+        label: s,
+        data: DATA.all_years.map(y => {
+          const total = (DATA.survey_by_source_year[s]||{})[y] || 0;
+          const texts = (DATA.source_year_counts[s]||{})[y] || 0;
+          return total > 0 ? texts / total * 100 : null;
+        }),
+        borderColor: color(i), backgroundColor: color(i),
+        spanGaps: false, tension: 0.25, pointRadius: 1.5, borderWidth: 1.5,
+      }))
+    },
+    options: {
+      plugins: {
+        legend: { position:'right', labels:{boxWidth:10,padding:8,font:{size:10}} },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${String(Math.round(ctx.parsed.y*10)/10).replace('.', ',')}%` } },
+      },
+      scales: {
+        x: { grid:GRID, ticks:TICKS },
+        y: { grid:GRID, ticks:{ ...TICKS, callback: v => `${v}%` }, beginAtZero:true },
+      }
+    }
+  });
+
+  // Same log-scale and indexed-growth pattern as the by-word charts above,
+  // applied per source instead of per word.
+  const textsBySource = s => DATA.all_years.map(y => (DATA.source_year_counts[s]||{})[y] || 0);
+
+  new Chart(document.getElementById('chart-source-log'), {
+    type: 'line',
+    data: {
+      labels: DATA.all_years,
+      datasets: [
+        {
+          label: 'All articles',
+          data: DATA.all_years.map(y => DATA.survey_by_year[y] || null),
+          borderColor: '#c8c8c8', backgroundColor: '#c8c8c8',
+          spanGaps: false, tension: 0.25, pointRadius: 1.5, borderWidth: 2,
+        },
+        ...sources.map((s, i) => ({
+          label: s,
+          data: textsBySource(s).map(v => v || null),
+          borderColor: color(i), backgroundColor: color(i),
+          spanGaps: false, tension: 0.25, pointRadius: 1.5, borderWidth: 1.5,
+        })),
+      ]
+    },
+    options: {
+      plugins: { legend: { position:'right', labels:{boxWidth:10,padding:8,font:{size:10}} } },
+      scales: {
+        x: { grid:GRID, ticks:TICKS },
+        y: { type:'logarithmic', grid:GRID, ticks:TICKS },
+      }
+    }
+  });
+
+  (function(){
+    const indexFrom = series => {
+      const baseIdx = series.findIndex(v => v > 0);
+      if (baseIdx === -1) return null;
+      const base = series[baseIdx];
+      return series.map((v, i) => i < baseIdx ? null : Math.round(v / base * 1000) / 10);
+    };
+
+    const allSeries  = DATA.all_years.map(y => DATA.survey_by_year[y] || 0);
+    const datasets   = [];
+    const allIndexed = indexFrom(allSeries);
+    if (allIndexed) {
+      datasets.push({
+        label: 'All articles', data: allIndexed,
+        borderColor: '#c8c8c8', backgroundColor: '#c8c8c8',
+        tension: 0.25, pointRadius: 1.5, borderWidth: 2,
+      });
+    }
+    sources.forEach((s, i) => {
+      const sourceIndexed = indexFrom(textsBySource(s));
+      if (!sourceIndexed) return;
+      datasets.push({
+        label: s, data: sourceIndexed,
+        borderColor: color(i), backgroundColor: color(i),
+        tension: 0.25, pointRadius: 1.5, borderWidth: 1.5,
+      });
+    });
+
+    new Chart(document.getElementById('chart-source-indexed'), {
+      type: 'line',
+      data: { labels: DATA.all_years, datasets },
+      options: {
+        plugins: { legend: { position:'right', labels:{boxWidth:10,padding:8,font:{size:10}} } },
+        scales: {
+          x: { grid:GRID, ticks:TICKS },
+          y: { grid:GRID, ticks:TICKS, beginAtZero:true },
+        }
+      }
+    });
+  })();
 })();
 
 // ── Texts per year ────────────────────────────────────────────────
@@ -1079,7 +1359,7 @@ new Chart(document.getElementById('chart-year-hits-log'), {
 })();
 
 // ── Frequency (horizontal bar) ────────────────────────────────────
-function makeFreq(canvasId, freqData) {
+function makeFreq(canvasId, freqData, { percent = false } = {}) {
   new Chart(document.getElementById(canvasId), {
     type: 'bar',
     data: {
@@ -1088,15 +1368,27 @@ function makeFreq(canvasId, freqData) {
     },
     options: {
       indexAxis:'y',
-      plugins:{legend:{display:false}},
-      scales:{ x:{grid:GRID,ticks:TICKS,beginAtZero:true}, y:{grid:{display:false},ticks:{...TICKS,font:{family:"'JetBrains Mono',monospace",size:11}}} }
+      plugins:{
+        legend:{display:false},
+        tooltip: percent ? { callbacks:{ label: ctx => `${String(ctx.parsed.x).replace('.', ',')}%` } } : {},
+      },
+      scales:{
+        x:{ grid:GRID, ticks: percent ? { ...TICKS, callback: v => `${v}%` } : TICKS, beginAtZero:true },
+        y:{ grid:{display:false}, ticks:{...TICKS,font:{family:"'JetBrains Mono',monospace",size:11}} }
+      }
     }
   });
 }
 makeFreq('chart-textile-freq', DATA.textile_freq);
 
+// Each word's hits as a share of Textile Metaphor texts in the corpus —
+// the relative counterpart to the absolute frequency chart above.
+makeFreq('chart-textile-freq-rel', DATA.textile_freq.map(([w, n]) => [
+  w, DATA.textile_metaphor_texts > 0 ? Math.round(n / DATA.textile_metaphor_texts * 1000) / 10 : 0,
+]), { percent: true });
+
 // ── Per-word temporal with tabs ────────────────────────────────────
-function makeWordTime(canvasId, tabGroupId, yearData, words) {
+function makeWordTime(canvasId, tabGroupId, yearData, words, { rate = false } = {}) {
   let chart = null;
   const tabs   = document.getElementById(tabGroupId);
   const canvas = document.getElementById(canvasId);
@@ -1107,10 +1399,25 @@ function makeWordTime(canvasId, tabGroupId, yearData, words) {
     chart = new Chart(canvas, {
       type: 'bar',
       data: { labels: DATA.all_years, datasets: [{
-        label: word, data: DATA.all_years.map(y=>(yearData[y]||{})[word]||0),
+        label: word,
+        data: DATA.all_years.map(y => {
+          const raw = (yearData[y]||{})[word] || 0;
+          if (!rate) return raw;
+          const total = DATA.survey_by_year[y] || 0;
+          return total > 0 ? Math.round(raw / total * 1000) / 10 : null;
+        }),
         backgroundColor:'#0a0a0a', borderWidth:0,
       }]},
-      options:{ plugins:{legend:{display:false}}, scales:{ x:{grid:GRID,ticks:TICKS}, y:{grid:GRID,ticks:TICKS,beginAtZero:true} } }
+      options:{
+        plugins:{
+          legend:{display:false},
+          tooltip: rate ? { callbacks:{ label: ctx => `${String(ctx.parsed.y).replace('.', ',')}%` } } : {},
+        },
+        scales:{
+          x:{grid:GRID,ticks:TICKS},
+          y:{grid:GRID, ticks: rate ? { ...TICKS, callback: v => `${v}%` } : TICKS, beginAtZero:true}
+        }
+      }
     });
   }
   words.forEach((w,i) => {
@@ -1123,6 +1430,7 @@ function makeWordTime(canvasId, tabGroupId, yearData, words) {
   });
 }
 makeWordTime('chart-textile-word-time','tabs-textile', DATA.year_textile, DATA.textile_words);
+makeWordTime('chart-textile-word-time-rel','tabs-textile-rel', DATA.year_textile, DATA.textile_words, { rate: true });
 
 // ── Co-occurrence cards ───────────────────────────────────────────
 function renderCooc(containerId, coocData, variants) {
@@ -1223,7 +1531,7 @@ renderCooc('colloc-textile', DATA.textile_colloc, DATA.textile_variants);
 </html>"""
 
 # ---------------------------------------------------------------------------
-# 6.  Main
+# 7.  Main
 # ---------------------------------------------------------------------------
 
 def main() -> None:
@@ -1261,10 +1569,14 @@ def main() -> None:
         stats["textile_metaphor_rate_pct"] = None
         stats["survey_by_year"]            = {}
         stats["survey_by_source"]          = {}
+        stats["survey_by_source_year"]     = {}
 
     html = HTML_TEMPLATE.replace("__DATA_PLACEHOLDER__", json.dumps(stats, ensure_ascii=False))
     OUTPUT_PATH.write_text(html, encoding="utf-8")
     print(f"\nDashboard written to: {OUTPUT_PATH}")
+
+    write_statistics_csv(stats, STATISTICS_CSV_PATH)
+    print(f"Statistics written to: {STATISTICS_CSV_PATH}")
 
 
 if __name__ == "__main__":
