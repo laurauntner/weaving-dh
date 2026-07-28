@@ -629,6 +629,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <p class="chart-note">Both series on a shared logarithmic axis, so their growth is directly comparable despite the difference in magnitude. Years with zero Textile Metaphor texts are omitted — undefined on a log scale.</p>
   </div>
 
+  <div class="chart-wrap">
+    <p class="chart-title">Indexed growth (<span id="chart-note-baseline-year">—</span> = 100)</p>
+    <canvas id="chart-year-indexed" height="100"></canvas>
+    <p class="chart-note">Both series rebased to 100 in their first year with data for both, showing relative growth rather than absolute scale.</p>
+  </div>
+
   <p class="subsection-title">Textile word hits per year</p>
   <div class="chart-wrap">
     <p class="chart-title">By word</p>
@@ -885,6 +891,49 @@ new Chart(document.getElementById('chart-year-log'), {
     }
   }
 });
+
+// Both series rebased to 100 at their first year with data for both, so
+// relative growth is readable on a plain linear axis (an alternative to the
+// log chart above that doesn't require reading a log scale).
+(function(){
+  const years   = DATA.all_years;
+  const textile = years.map(y => DATA.year_counts[y] || 0);
+  const all     = years.map(y => DATA.survey_by_year[y] || 0);
+  const baseIdx = years.findIndex((_, i) => textile[i] > 0 && all[i] > 0);
+  if (baseIdx === -1) return;
+
+  document.getElementById('chart-note-baseline-year').textContent = years[baseIdx];
+
+  const index = (series, base) => series.map(v => Math.round(v / base * 1000) / 10);
+
+  new Chart(document.getElementById('chart-year-indexed'), {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [
+        {
+          label: 'All articles',
+          data: index(all, all[baseIdx]),
+          borderColor: '#c8c8c8', backgroundColor: '#c8c8c8',
+          tension: 0.25, pointRadius: 2,
+        },
+        {
+          label: 'Textile Metaphor texts',
+          data: index(textile, textile[baseIdx]),
+          borderColor: '#2563a8', backgroundColor: '#2563a8',
+          tension: 0.25, pointRadius: 2,
+        },
+      ]
+    },
+    options: {
+      plugins: { legend: { position:'top', align:'end', labels:{boxWidth:10,padding:8,font:{size:10}} } },
+      scales: {
+        x: { grid:GRID, ticks:TICKS },
+        y: { grid:GRID, ticks:TICKS, beginAtZero:true },
+      }
+    }
+  });
+})();
 
 // ── Stacked temporal by word ───────────────────────────────────────
 function makeStacked(canvasId, words, yearData) {
