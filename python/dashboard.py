@@ -371,6 +371,10 @@ def compute_survey_coverage(clean_rows: list[dict],
       * survey_by_year, survey_by_source, survey_by_source_year — the
         per-year/per-source chart data, likewise bounded to all_years so
         every chart shares a consistent, meaningful axis.
+      * full_years, survey_by_year_full — the journal survey's own full year
+        range (unbounded by the corpus's year range), for the "All articles
+        per year" chart, which should show total publication volume even in
+        years before the corpus has any Textile Metaphor texts.
     """
     full_lifetime_total = sum(
         sum(journal_counts.get(mapped, {}).values())
@@ -384,6 +388,18 @@ def compute_survey_coverage(clean_rows: list[dict],
         for y in all_years
     }
     articles_surveyed_bounded_total = sum(survey_by_year.values())
+
+    all_survey_years = [
+        y for mapped in JOURNAL_COUNTS_NAME_MAP.values()
+        for y in journal_counts.get(mapped, {})
+    ]
+    full_years = (list(range(min(all_survey_years), max(all_survey_years) + 1))
+                  if all_survey_years else [])
+    survey_by_year_full = {
+        y: sum(journal_counts.get(mapped, {}).get(y, 0)
+               for mapped in JOURNAL_COUNTS_NAME_MAP.values())
+        for y in full_years
+    }
 
     matched_ids: defaultdict = defaultdict(set)
     for row in clean_rows:
@@ -409,6 +425,8 @@ def compute_survey_coverage(clean_rows: list[dict],
         "survey_by_year"            : survey_by_year,
         "survey_by_source"          : survey_by_source,
         "survey_by_source_year"     : survey_by_source_year,
+        "full_years"                : full_years,
+        "survey_by_year_full"       : survey_by_year_full,
     }
 
 # ---------------------------------------------------------------------------
@@ -633,7 +651,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <h2 class="section-title">Overview</h2>
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-number" id="stat-sources">—</div><div class="stat-label">Sources</div><div class="stat-sub-label">(8 surveyed)</div></div>
-    <div class="stat-card"><div class="stat-number" id="stat-years">—</div><div class="stat-label">Year range</div><div class="stat-sub-label">(analysis)</div></div>
+    <div class="stat-card"><div class="stat-number" id="stat-years">—</div><div class="stat-label">Year range</div><div class="stat-sub-label">(corpus with textile metaphors)</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-textile-metaphor">—</div><div class="stat-label">Metaphorical Textile texts</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-articles-surveyed">—</div><div class="stat-label">Articles surveyed</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-textile-rate">—</div><div class="stat-label">Textile metaphor rate</div><div class="stat-sub-label stat-year-span"></div></div>
@@ -1049,8 +1067,8 @@ new Chart(document.getElementById('chart-year-total'), {
 new Chart(document.getElementById('chart-year-all'), {
   type: 'bar',
   data: {
-    labels: DATA.all_years,
-    datasets: [{ data: DATA.all_years.map(y=>DATA.survey_by_year[y]||0), backgroundColor:'#c8c8c8', borderWidth:0 }]
+    labels: DATA.full_years,
+    datasets: [{ data: DATA.full_years.map(y=>DATA.survey_by_year_full[y]||0), backgroundColor:'#c8c8c8', borderWidth:0 }]
   },
   options: { plugins:{legend:{display:false}}, scales:{ x:{grid:GRID,ticks:TICKS}, y:{grid:GRID,ticks:TICKS,beginAtZero:true} } }
 });
@@ -1636,6 +1654,8 @@ def main() -> None:
         stats["survey_by_year"]            = {}
         stats["survey_by_source"]          = {}
         stats["survey_by_source_year"]     = {}
+        stats["full_years"]                = []
+        stats["survey_by_year_full"]       = {}
 
     html = HTML_TEMPLATE.replace("__DATA_PLACEHOLDER__", json.dumps(stats, ensure_ascii=False))
     OUTPUT_PATH.write_text(html, encoding="utf-8")
