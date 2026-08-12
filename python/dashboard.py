@@ -1,31 +1,5 @@
-"""
-Build a self-contained, interactive HTML dashboard on metaphorical textile
-vocabulary in a corpus of digital-humanities journal articles.
-
-Input (CSV, see Configuration below):
-  * CLEAN table — one row per confirmed Textile Metaphor word occurrence,
-    already restricted to the texts and words a human reviewer confirmed.
-    The sole data source for every statistic in the dashboard.
-  * Journal-counts table — total articles published per DH journal per year,
-    independent of this corpus. Used only to contextualise the corpus against
-    overall publication volume (see build_stats vs. compute_survey_coverage).
-
-Output:
-  * A single HTML file (OUTPUT_PATH) with the computed statistics embedded as
-    JSON and rendered client-side with Chart.js.
-  * A standalone CSV (STATISTICS_CSV_PATH) with every statistic shown in the
-    dashboard, in tidy long format, for sharing without KWIC/concordance text.
-  * A folder of PNGs (IMAGES_DIR) — every chart in the dashboard, including
-    every tab of "select word"/"select source" charts, rendered via a
-    headless browser (see export_chart_images; requires Playwright).
-
-Counting conventions:
-  * Every row in CLEAN_CSV_PATH is a confirmed Textile Metaphor occurrence —
-    there is no other category to filter by and no include/exclude flag.
-  * A text is counted once per statistic (once per word it uses, once per
-    source, once per year), however many occurrence rows it has; only the
-    co-occurrence/collocation statistics count at occurrence-level instead.
-"""
+"""Builds the Textile Metaphors in DH Scholarship dashboard from the clean
+data table and the journal article-count survey."""
 
 import base64
 import csv
@@ -47,16 +21,8 @@ for _res, _kind in [("punkt","tokenizers"),("punkt_tab","tokenizers"),
     except LookupError:
         nltk.download(_res, quiet=True)
 
-# ---------------------------------------------------------------------------
-# 0.  Configuration
-# ---------------------------------------------------------------------------
-
-# Holds raw KWIC excerpts from copyrighted articles, so it lives outside
-# this repo (not publishable) rather than under data/. The sole data source
-# for every statistic in the dashboard.
+# copyrighted KWIC excerpts, so this stays outside the repo
 CLEAN_CSV_PATH = Path("../../CLEAN Weaving DH Data Table.csv")
-# Total articles published per DH journal per year, independent of this
-# corpus's search hits. Feeds compute_survey_coverage() only.
 JOURNAL_COUNTS_PATH = Path("../data/articles_per_year_long.csv")
 OUTPUT_PATH = Path("../html/textile_metaphors_in_dh_scholarship.html")
 
@@ -113,10 +79,6 @@ _WORD_RE  = re.compile(r"\b[a-zA-Z]{3,}\b")
 _HIT_RE   = re.compile(r"\*\*(\w+)\*\*")
 _LABEL_RE = re.compile(r"^\w[\w\s]*:$")
 
-# ---------------------------------------------------------------------------
-# 1.  Load CSV
-# ---------------------------------------------------------------------------
-
 def load_csv(path: Path) -> list[dict]:
     """Load a CSV/semicolon-CSV, auto-detecting the delimiter — CLEAN_CSV_PATH
     gets re-saved from spreadsheet software from time to time, which can
@@ -136,10 +98,6 @@ def _parse_year(row: dict) -> Optional[int]:
         return int(float(year_raw)) if year_raw else None
     except ValueError:
         return None
-
-# ---------------------------------------------------------------------------
-# 2.  KWIC analysis helpers
-# ---------------------------------------------------------------------------
 
 def _cooc_counter(kwic_cell: str) -> Counter:
     """Raw lemma Counter for a KWIC cell (no truncation)."""
@@ -186,10 +144,6 @@ def _colloc_counter(kwic_cell: str, window: int = COLLOC_WIN) -> Counter:
                 counter[lemma] += 1
     return counter
 
-# ---------------------------------------------------------------------------
-# 3.  Aggregate statistics
-# ---------------------------------------------------------------------------
-
 def _accumulate_textile_cooc_from_clean(
         clean_rows: list[dict],
         cooc_acc: defaultdict, colloc_acc: defaultdict,
@@ -217,14 +171,8 @@ def _accumulate_textile_cooc_from_clean(
                 year_colloc_acc[year][canon][lemma] += cnt
 
 def build_stats(clean_rows: list[dict]) -> dict:
-    """
-    Compute every dashboard statistic from clean_rows (CLEAN_CSV_PATH): one
-    row per confirmed Textile Metaphor word occurrence. Occurrence rows are
-    grouped by text id first, so a text is counted once per statistic
-    (once per word it uses, once per source, once per year) regardless of
-    how many occurrence rows it has; only co-occurrence/collocation count
-    at occurrence-level, directly from clean_rows.
-    """
+    """Compute every dashboard statistic from clean_rows, grouped by text id
+    so a text is counted once per statistic regardless of occurrence count."""
     texts: dict[str, dict] = {}
     text_words: defaultdict = defaultdict(set)
     for row in clean_rows:
@@ -279,7 +227,6 @@ def build_stats(clean_rows: list[dict]) -> dict:
     year_counts : Counter = Counter(years)
     all_years   = list(range(year_range[0], year_range[1] + 1)) if year_range[0] else []
 
-    # Normalise temporal co-occurrence/collocation by Textile Metaphor text count per year
     def normalise_year_cooc(acc: defaultdict) -> dict:
         result: dict = {}
         for year, word_dict in acc.items():
@@ -319,21 +266,7 @@ def build_stats(clean_rows: list[dict]) -> dict:
         },
     }
 
-# ---------------------------------------------------------------------------
-# 4.  Survey-coverage statistics
-# ---------------------------------------------------------------------------
-#
-# CLEAN_CSV_PATH holds one row per confirmed occurrence, not every article a
-# journal ever published, so it can't say how common Textile Metaphor use is
-# relative to total output. JOURNAL_COUNTS_PATH supplies that denominator
-# for 7 of this corpus's 8 sources ("Digital Medievalist" has no counterpart
-# there and is excluded here). The overview figures (articles_surveyed_total,
-# textile_metaphor_rate_pct) use each journal's full, unbounded output, since
-# the underlying search covered more than all_years; the per-year/per-source
-# chart data is bounded to all_years so those charts share one clean axis.
-
-# Maps journal_title values from CLEAN_CSV_PATH to the journal names used in
-# JOURNAL_COUNTS_PATH. Renamed/merged journals map to their combined entry.
+# "Digital Medievalist" has no counterpart in JOURNAL_COUNTS_PATH, so it's excluded here
 JOURNAL_COUNTS_NAME_MAP: dict[str, str] = {
     "Index of DH Conferences": "Index of DH Conferences",
     "Digital Humanities Quarterly": "Digital Humanities Quarterly",
@@ -358,24 +291,8 @@ def load_journal_counts(path: Path) -> dict[str, dict[int, int]]:
 def compute_survey_coverage(clean_rows: list[dict],
                              journal_counts: dict[str, dict[int, int]],
                              all_years: list[int]) -> dict:
-    """
-    Three kinds of figures, all for the 7 of this corpus's 8 sources with a
-    counterpart in journal_counts ("Digital Medievalist" has none and is
-    excluded):
-      * articles_surveyed_total — corpus-wide overview figure, using each
-        journal's full, unbounded published output (the actual search
-        covered more than just all_years).
-      * textile_metaphor_rate_pct — Textile Metaphor texts as a percentage
-        of articles published within all_years specifically (the corpus's
-        own year range), not the unbounded total above.
-      * survey_by_year, survey_by_source, survey_by_source_year — the
-        per-year/per-source chart data, likewise bounded to all_years so
-        every chart shares a consistent, meaningful axis.
-      * full_years, survey_by_year_full — the journal survey's own full year
-        range (unbounded by the corpus's year range), for the "All articles
-        per year" chart, which should show total publication volume even in
-        years before the corpus has any Textile Metaphor texts.
-    """
+    """Textile Metaphor rate/coverage figures against each journal's full
+    output, for the 7 sources with a counterpart in journal_counts."""
     full_lifetime_total = sum(
         sum(journal_counts.get(mapped, {}).values())
         for mapped in JOURNAL_COUNTS_NAME_MAP.values()
@@ -429,20 +346,11 @@ def compute_survey_coverage(clean_rows: list[dict],
         "survey_by_year_full"       : survey_by_year_full,
     }
 
-# ---------------------------------------------------------------------------
-# 5.  Statistics CSV export
-# ---------------------------------------------------------------------------
-
 STATISTICS_CSV_PATH   = Path("../data/statistics.csv")
 STATISTICS_CSV_HEADER = ["metric", "year", "word", "related_word", "source", "value"]
 
 def build_statistics_rows(stats: dict) -> list[list]:
-    """
-    Flatten every statistic shown in the dashboard into a tidy long-format
-    table: one row per (metric, dimensions) with a single `value` column.
-    Dimensions that don't apply to a given metric are left blank. Excludes
-    all KWIC/concordance text.
-    """
+    """Flatten every dashboard statistic into a tidy long-format table."""
     rows: list[list] = []
 
     def add(metric, value, *, year="", word="", related_word="", source=""):
@@ -519,10 +427,6 @@ def write_statistics_csv(stats: dict, path: Path) -> None:
         writer.writerow(STATISTICS_CSV_HEADER)
         writer.writerows(rows)
 
-# ---------------------------------------------------------------------------
-# 6.  HTML template
-# ---------------------------------------------------------------------------
-
 HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -532,87 +436,94 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <link rel="icon" type="image/jpeg" href="https://ids.si.edu/ids/deliveryService?id=NMAH-AHB2019q157831-000001&max=64">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display&family=JetBrains+Mono:wght@400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --black:  #0a0a0a;
-    --white:  #f8f8f6;
-    --grey-1: #1c1c1c;
-    --grey-2: #3a3a3a;
-    --grey-3: #7a7a7a;
-    --grey-4: #c8c8c8;
-    --grey-5: #ebebeb;
-    --rule:   1px solid #d0d0d0;
-    --font-display: 'DM Serif Display', Georgia, serif;
-    --font-body:    'DM Sans', system-ui, sans-serif;
-    --font-mono:    'JetBrains Mono', 'Fira Mono', monospace;
+    --black:  #0d1012;
+    --white:  #ffffff;
+    --grey-1: #171a1d;
+    --grey-2: #363d44;
+    --grey-3: #6b7580;
+    --grey-4: #b9c0c7;
+    --grey-5: #e6e9ec;
+    --grey-6: #f3f5f6;
+    --accent:      #0f7a48;
+    --accent-glow: #2ee88a;
+    --rule:   1px solid #ccd2d8;
+    --glow:   0 0 0 1px var(--accent), 0 0 16px -2px var(--accent-glow), 0 0 30px -8px var(--accent-glow);
+    --font-body: 'Roboto', system-ui, sans-serif;
+    --font-mono: 'Roboto Mono', 'SFMono-Regular', Consolas, monospace;
+    --scanlines: repeating-linear-gradient(0deg, rgba(0,0,0,0.025) 0px, rgba(0,0,0,0.025) 1px, transparent 1px, transparent 3px),
+                 repeating-linear-gradient(90deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 32px),
+                 repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 32px);
   }
 
   html { scroll-behavior: smooth; }
-  body { background: var(--white); color: var(--black); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
+  body { background: var(--scanlines), var(--white); color: var(--black); font-family: var(--font-body); font-size: 15px; line-height: 1.6; }
   .page-wrap { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
 
-  header { border-bottom: 2px solid var(--black); padding: 3rem 0 2rem; }
+  header { border-bottom: 2px solid var(--black); padding: 2.5rem 0 1.75rem; }
   .header-inner { display: flex; align-items: flex-start; justify-content: space-between; gap: 2rem; }
-  .site-title { font-family: var(--font-display); font-size: clamp(1.5rem,3.5vw,2.4rem); letter-spacing: -0.02em; line-height: 1.1; }
-  .site-contributors { font-size: 0.85rem; color: var(--grey-3); margin-top: 0.6rem; }
-  .header-logo { width: 120px; height: 120px; object-fit: cover; flex-shrink: 0; border: var(--rule); }
+  .site-title { font-family: var(--font-body); font-weight: 700; font-size: clamp(1.3rem,3vw,2rem); letter-spacing: -0.01em; line-height: 1.2; }
+  .site-contributors { font-family: var(--font-mono); font-size: 0.78rem; color: var(--grey-3); margin-top: 0.6rem; }
+  .header-logo { width: 96px; height: 96px; object-fit: cover; flex-shrink: 0; border: var(--rule); }
 
   nav { border-bottom: var(--rule); padding: 0.75rem 0; position: sticky; top: 0; background: var(--white); z-index: 100; }
   nav ul { display: flex; align-items: center; gap: 2rem; list-style: none; flex-wrap: wrap; }
-  nav a { font-size: 0.8rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--grey-2); text-decoration: none; }
-  nav a:hover { color: var(--black); }
+  nav a { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--grey-2); text-decoration: none; }
+  nav a:hover { color: var(--accent); }
+  nav a:focus-visible { outline: none; box-shadow: var(--glow); }
   nav .nav-github { margin-left: auto; }
   nav .nav-github a { display: flex; align-items: center; gap: 0.4rem; }
 
-  section { padding: 3.5rem 0; border-bottom: var(--rule); }
+  section { padding: 3rem 0; border-bottom: var(--rule); }
   section:last-of-type { border-bottom: none; }
-  .section-label { font-size: 0.7rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--grey-3); margin-bottom: 0.5rem; }
-  .section-title { font-family: var(--font-display); font-size: clamp(1.4rem,3vw,2rem); letter-spacing: -0.01em; margin-bottom: 2rem; }
-  .subsection-title { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--grey-2); margin: 2.5rem 0 1rem; border-top: var(--rule); padding-top: 1.5rem; }
+  .section-title { font-family: var(--font-body); font-weight: 700; font-size: clamp(1.2rem,2.4vw,1.6rem); letter-spacing: -0.01em; margin-bottom: 1.75rem; }
+  .subsection-title { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--grey-2); margin: 2.25rem 0 1rem; border-top: var(--rule); padding-top: 1.25rem; }
 
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); border: 2px solid var(--black); }
-  .stat-card { padding: 1.5rem; border-right: var(--rule); }
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(160px,1fr)); border: 1px solid var(--grey-4); border-bottom: 3px solid transparent; border-image: linear-gradient(90deg, #0d1012, #c4c9ce 45%, #f6f7f8 50%, #c4c9ce 55%, #0d1012) 1; }
+  .stat-card { padding: 1.25rem 1.5rem; border-right: var(--rule); }
   .stat-card:last-child { border-right: none; }
-  .stat-number { font-family: var(--font-display); font-size: 2.8rem; line-height: 1; letter-spacing: -0.03em; }
-  .stat-label { font-size: 0.75rem; color: var(--grey-3); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.4rem; }
+  .stat-number { font-family: var(--font-mono); font-weight: 700; font-size: 2.2rem; line-height: 1; }
+  .stat-label { font-size: 0.72rem; color: var(--grey-3); text-transform: uppercase; letter-spacing: 0.12em; margin-top: 0.5rem; }
   .stat-year-span { text-transform: none; letter-spacing: normal; color: var(--grey-3); }
-  .stat-sub-label { font-size: 0.7rem; color: var(--grey-3); margin-top: 0.2rem; }
+  .stat-sub-label { font-family: var(--font-mono); font-size: 0.68rem; color: var(--grey-3); margin-top: 0.25rem; }
 
   .source-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-  .source-table th { text-align: left; font-weight: 500; font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grey-3); padding: 0.5rem 1rem 0.5rem 0; border-bottom: var(--rule); }
+  .source-table th { text-align: left; font-weight: 500; font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--grey-3); padding: 0.5rem 1rem 0.5rem 0; border-bottom: var(--rule); }
   .source-table td { padding: 0.6rem 1rem 0.6rem 0; border-bottom: var(--rule); color: var(--grey-1); }
+  .source-table td:last-child { font-family: var(--font-mono); }
   .source-table th:last-child, .source-table td:last-child { text-align: right; padding-right: 0; }
   .source-table tr:last-child td { border-bottom: none; }
 
   .chart-wrap { position: relative; background: #fff; border: var(--rule); padding: 1.5rem; margin-bottom: 1.5rem; }
-  .chart-title { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--grey-2); margin-bottom: 1rem; padding-right: 5.5rem; }
-  .chart-download { position: absolute; top: 1.4rem; right: 1.5rem; font-size: 0.65rem; font-family: var(--font-mono); letter-spacing: 0.02em; color: var(--grey-3); text-decoration: none; border: 1px solid var(--grey-4); padding: 0.2rem 0.5rem; background: var(--white); cursor: pointer; }
-  .chart-download:hover { color: var(--black); border-color: var(--black); }
-  .chart-note { font-size: 0.72rem; color: var(--grey-3); margin-top: 0.9rem; font-style: italic; line-height: 1.5; }
+  .chart-title { font-size: 0.72rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--grey-2); margin-bottom: 1rem; padding-right: 5.5rem; }
+  .chart-download { position: absolute; top: 1.4rem; right: 1.5rem; font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.02em; color: var(--grey-3); text-decoration: none; border: 1px solid var(--grey-4); padding: 0.2rem 0.5rem; background: var(--white); cursor: pointer; transition: color 0.12s, border-color 0.12s, box-shadow 0.12s; }
+  .chart-download:hover { color: var(--accent); border-color: var(--accent); box-shadow: var(--glow); }
+  .chart-note { font-family: var(--font-mono); font-size: 0.7rem; color: var(--grey-3); margin-top: 0.9rem; line-height: 1.5; }
 
   .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
   @media (max-width: 700px) { .chart-row { grid-template-columns: 1fr; } }
 
   .tab-group { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.25rem; }
-  .tab-btn { padding: 0.3rem 0.8rem; font-size: 0.78rem; font-family: var(--font-mono); border: 1px solid var(--grey-4); background: transparent; cursor: pointer; color: var(--grey-2); transition: background 0.12s, color 0.12s; }
-  .tab-btn:hover { background: var(--grey-5); }
-  .tab-btn.active { background: var(--black); color: var(--white); border-color: var(--black); }
+  .tab-btn { padding: 0.3rem 0.8rem; font-family: var(--font-mono); font-size: 0.72rem; border: 1px solid var(--grey-4); background: transparent; cursor: pointer; color: var(--grey-2); transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s; }
+  .tab-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tab-btn.active { background: var(--accent); color: var(--black); border-color: var(--black); font-weight: 700; box-shadow: 0 0 12px -3px var(--accent-glow); }
 
   .cooc-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(280px,1fr)); gap: 1.5rem; }
   .cooc-card { border: var(--rule); padding: 1.25rem; }
-  .cooc-card-title { font-family: var(--font-mono); font-size: 0.8rem; color: var(--grey-2); margin-bottom: 0.25rem; padding-bottom: 0.5rem; border-bottom: var(--rule); }
-  .cooc-card-variants { font-size: 0.7rem; color: var(--grey-3); margin-bottom: 0.9rem; font-style: italic; }
+  .cooc-card-title { font-family: var(--font-mono); font-size: 0.8rem; font-weight: 700; color: var(--grey-1); margin-bottom: 0.25rem; padding-bottom: 0.5rem; border-bottom: var(--rule); }
+  .cooc-card-variants { font-family: var(--font-mono); font-size: 0.68rem; color: var(--grey-3); margin-bottom: 0.9rem; }
   .cooc-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
-  .cooc-word { width: 110px; flex-shrink: 0; color: var(--grey-1); font-family: var(--font-mono); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cooc-bar-wrap { flex: 1; background: var(--grey-5); height: 10px; }
-  .cooc-bar { height: 100%; background: var(--black); transition: width 0.3s ease; }
-  .cooc-count { width: 28px; text-align: right; color: var(--grey-3); font-size: 0.72rem; font-family: var(--font-mono); }
+  .cooc-word { width: 110px; flex-shrink: 0; color: var(--grey-1); font-family: var(--font-mono); font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cooc-bar-wrap { flex: 1; background: var(--grey-5); height: 8px; }
+  .cooc-bar { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+  .cooc-count { width: 28px; text-align: right; color: var(--grey-3); font-family: var(--font-mono); font-size: 0.7rem; }
 
 
-  .variants-note { font-size: 0.75rem; color: var(--grey-3); font-style: italic; margin-top: -1rem; margin-bottom: 1.5rem; }
+  .variants-note { font-family: var(--font-mono); font-size: 0.72rem; color: var(--grey-3); margin-top: -1rem; margin-bottom: 1.5rem; }
 </style>
 </head>
 <body>
@@ -647,7 +558,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </nav>
 
 <section id="overview">
-  <p class="section-label">Corpus</p>
   <h2 class="section-title">Overview</h2>
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-number" id="stat-sources">—</div><div class="stat-label">Sources</div><div class="stat-sub-label">(8 surveyed)</div></div>
@@ -665,7 +575,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </section>
 
 <section id="temporal">
-  <p class="section-label">Chronology</p>
   <h2 class="section-title">Distribution Over Time</h2>
   <div class="chart-row">
     <div class="chart-wrap">
@@ -725,7 +634,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </section>
 
 <section id="vocabulary">
-  <p class="section-label">Vocabulary</p>
   <h2 class="section-title">Textile Words</h2>
   <p class="variants-note" id="textile-variants-note"></p>
   <div class="chart-row">
@@ -758,7 +666,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </section>
 
 <section id="sources">
-  <p class="section-label">Sources</p>
   <h2 class="section-title">By Source</h2>
   <div class="chart-wrap">
     <p class="chart-title">Textile Metaphor Texts per Source</p>
@@ -798,7 +705,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 </section>
 
 <section id="cooccurrence">
-  <p class="section-label">Context</p>
   <h2 class="section-title">Co-occurrence &amp; Collocation</h2>
 
   <p class="subsection-title">Top 5 Co-occurring Words in KWIC Context</p>
@@ -833,19 +739,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 const DATA = __DATA_PLACEHOLDER__;
 
 const PALETTE = [
-  '#2563a8','#b5451b','#2a7a4f','#7c3d99',
-  '#b08a1e','#3a8a8a','#c4565e','#5a6e2a',
-  '#1a5c8a','#8a3a1a','#1a5a3a','#5a2a7a',
+  '#0f7a48','#c17a3d','#3f74a1','#7d5a99',
+  '#a68a2e','#2f8f8f','#a1495a','#5c6b30',
+  '#435f8f','#96602f','#237a5e','#6d4a70',
 ];
 function color(i){ return PALETTE[i % PALETTE.length]; }
 
-Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
+Chart.defaults.font.family = "'Roboto Mono', 'SFMono-Regular', Consolas, monospace";
 Chart.defaults.font.size   = 11;
-Chart.defaults.color       = '#7a7a7a';
-const GRID  = { color: '#ebebeb', drawBorder: false };
-const TICKS = { color: '#7a7a7a' };
+Chart.defaults.color       = '#6b7580';
+const GRID  = { color: '#e6e9ec', drawBorder: false };
+const TICKS = { color: '#6b7580' };
 
-// ── Overview ──────────────────────────────────────────────────────
+// Overview
 document.getElementById('stat-sources').textContent = DATA.sources.length;
 document.getElementById('stat-years').textContent   =
   DATA.year_range[0] ? `${DATA.year_range[0]}–${DATA.year_range[1]}` : '—';
@@ -857,9 +763,6 @@ document.getElementById('stat-articles-surveyed').textContent =
 document.getElementById('stat-textile-rate').textContent =
   DATA.textile_metaphor_rate_pct != null ? `${DATA.textile_metaphor_rate_pct}%` : '—';
 
-// "Articles surveyed" / rate-by-source figures are bounded to the corpus's
-// own year range, not each journal's full lifetime — noted wherever that
-// isn't otherwise visible from a chart's own year axis.
 if (DATA.year_range[0]) {
   const yearSpanText = `(${DATA.year_range[0]}–${DATA.year_range[1]})`;
   document.querySelectorAll('.stat-year-span').forEach(el => el.textContent = yearSpanText);
@@ -878,10 +781,7 @@ const textileVariantParts = Object.entries(DATA.textile_variants).map(([w,v])=>`
 document.getElementById('textile-variants-note').textContent =
   'Morphological variants included: ' + textileVariantParts.join('; ') + '.';
 
-// ── Source chart ──────────────────────────────────────────────────
-// Two separate charts, each on its own y-axis, rather than one overlay: the
-// Textile Metaphor rate is small enough (~1-2%) that a dark-blue bar drawn
-// over a light-blue one at true scale would be all but invisible.
+// Source chart
 (function(){
   const sources = DATA.sources.map(([s])=>s);
 
@@ -891,7 +791,7 @@ document.getElementById('textile-variants-note').textContent =
       labels: sources,
       datasets: [{
         data: sources.map(s => (DATA.source_textile_by_cat[s]||{})['Textile Metaphor'] || 0),
-        backgroundColor: '#2563a8',
+        backgroundColor: '#0f7a48',
         borderWidth: 0,
       }]
     },
@@ -910,7 +810,7 @@ document.getElementById('textile-variants-note').textContent =
       labels: sources,
       datasets: [{
         data: sources.map(s => DATA.survey_by_source[s] || 0),
-        backgroundColor: '#9dc3e6',
+        backgroundColor: '#a6dcbf',
         borderWidth: 0,
       }]
     },
@@ -923,8 +823,6 @@ document.getElementById('textile-variants-note').textContent =
     }
   });
 
-  // Textile Metaphor texts as a percentage of each source's total articles —
-  // the relative counterpart to the two absolute-count charts above.
   new Chart(document.getElementById('chart-source-rate'), {
     type: 'bar',
     data: {
@@ -935,7 +833,7 @@ document.getElementById('textile-variants-note').textContent =
           const texts = (DATA.source_textile_by_cat[s]||{})['Textile Metaphor'] || 0;
           return total > 0 ? texts / total * 100 : null;
         }),
-        backgroundColor: '#2563a8',
+        backgroundColor: '#0f7a48',
         borderWidth: 0,
       }]
     },
@@ -951,8 +849,6 @@ document.getElementById('textile-variants-note').textContent =
     }
   });
 
-  // Same rate, broken out per year and per source — one line per source,
-  // colour-matched to the by-word timeline charts above.
   new Chart(document.getElementById('chart-source-rate-timeline'), {
     type: 'line',
     data: {
@@ -980,8 +876,6 @@ document.getElementById('textile-variants-note').textContent =
     }
   });
 
-  // Same log-scale and indexed-growth pattern as the by-word charts above,
-  // applied per source instead of per word.
   const textsBySource = s => DATA.all_years.map(y => (DATA.source_year_counts[s]||{})[y] || 0);
 
   new Chart(document.getElementById('chart-source-log'), {
@@ -992,7 +886,7 @@ document.getElementById('textile-variants-note').textContent =
         {
           label: 'All articles',
           data: DATA.all_years.map(y => DATA.survey_by_year[y] || null),
-          borderColor: '#c8c8c8', backgroundColor: '#c8c8c8',
+          borderColor: '#b9c0c7', backgroundColor: '#b9c0c7',
           spanGaps: false, tension: 0.25, pointRadius: 1.5, borderWidth: 2,
         },
         ...sources.map((s, i) => ({
@@ -1026,7 +920,7 @@ document.getElementById('textile-variants-note').textContent =
     if (allIndexed) {
       datasets.push({
         label: 'All articles', data: allIndexed,
-        borderColor: '#c8c8c8', backgroundColor: '#c8c8c8',
+        borderColor: '#b9c0c7', backgroundColor: '#b9c0c7',
         tension: 0.25, pointRadius: 1.5, borderWidth: 2,
       });
     }
@@ -1054,12 +948,12 @@ document.getElementById('textile-variants-note').textContent =
   })();
 })();
 
-// ── Texts per year ────────────────────────────────────────────────
+// Texts per year
 new Chart(document.getElementById('chart-year-total'), {
   type: 'bar',
   data: {
     labels: DATA.all_years,
-    datasets: [{ data: DATA.all_years.map(y=>DATA.year_counts[y]||0), backgroundColor:'#0a0a0a', borderWidth:0 }]
+    datasets: [{ data: DATA.all_years.map(y=>DATA.year_counts[y]||0), backgroundColor:'#0d1012', borderWidth:0 }]
   },
   options: { plugins:{legend:{display:false}}, scales:{ x:{grid:GRID,ticks:TICKS}, y:{grid:GRID,ticks:{...TICKS,stepSize:1},beginAtZero:true} } }
 });
@@ -1068,15 +962,11 @@ new Chart(document.getElementById('chart-year-all'), {
   type: 'bar',
   data: {
     labels: DATA.full_years,
-    datasets: [{ data: DATA.full_years.map(y=>DATA.survey_by_year_full[y]||0), backgroundColor:'#c8c8c8', borderWidth:0 }]
+    datasets: [{ data: DATA.full_years.map(y=>DATA.survey_by_year_full[y]||0), backgroundColor:'#b9c0c7', borderWidth:0 }]
   },
   options: { plugins:{legend:{display:false}}, scales:{ x:{grid:GRID,ticks:TICKS}, y:{grid:GRID,ticks:TICKS,beginAtZero:true} } }
 });
 
-// Textile Metaphor texts per year as a percentage of that year's total
-// articles — a line, not bars, since it's a rate rather than a count, and
-// null (not 0) for years with no survey denominator so the line breaks
-// instead of implying a real zero.
 new Chart(document.getElementById('chart-year-rate'), {
   type: 'line',
   data: {
@@ -1086,13 +976,13 @@ new Chart(document.getElementById('chart-year-rate'), {
         const total = DATA.survey_by_year[y] || 0;
         return total > 0 ? (DATA.year_counts[y]||0) / total * 100 : null;
       }),
-      borderColor: '#2563a8',
-      backgroundColor: 'rgba(37,99,168,0.08)',
+      borderColor: '#0f7a48',
+      backgroundColor: 'rgba(15,122,72,0.08)',
       fill: true,
       spanGaps: false,
       tension: 0.25,
       pointRadius: 3,
-      pointBackgroundColor: '#2563a8',
+      pointBackgroundColor: '#0f7a48',
     }]
   },
   options: {
@@ -1107,10 +997,6 @@ new Chart(document.getElementById('chart-year-rate'), {
   }
 });
 
-// Both series on one logarithmic axis: a linear axis would flatten the
-// smaller Textile Metaphor series to invisibility next to total article
-// counts, but a shared log axis makes their growth curves comparable. A
-// value of 0 has no logarithm, so zero-count years become null (a gap).
 new Chart(document.getElementById('chart-year-log'), {
   type: 'line',
   data: {
@@ -1119,15 +1005,15 @@ new Chart(document.getElementById('chart-year-log'), {
       {
         label: 'All articles',
         data: DATA.all_years.map(y => DATA.survey_by_year[y] || null),
-        borderColor: '#c8c8c8',
-        backgroundColor: '#c8c8c8',
+        borderColor: '#b9c0c7',
+        backgroundColor: '#b9c0c7',
         spanGaps: false, tension: 0.25, pointRadius: 2,
       },
       {
         label: 'Textile Metaphor texts',
         data: DATA.all_years.map(y => DATA.year_counts[y] || null),
-        borderColor: '#2563a8',
-        backgroundColor: '#2563a8',
+        borderColor: '#0f7a48',
+        backgroundColor: '#0f7a48',
         spanGaps: false, tension: 0.25, pointRadius: 2,
       },
     ]
@@ -1141,9 +1027,6 @@ new Chart(document.getElementById('chart-year-log'), {
   }
 });
 
-// Both series rebased to 100 at their first year with data for both, so
-// relative growth is readable on a plain linear axis (an alternative to the
-// log chart above that doesn't require reading a log scale).
 (function(){
   const years   = DATA.all_years;
   const textile = years.map(y => DATA.year_counts[y] || 0);
@@ -1163,13 +1046,13 @@ new Chart(document.getElementById('chart-year-log'), {
         {
           label: 'All articles',
           data: index(all, all[baseIdx]),
-          borderColor: '#c8c8c8', backgroundColor: '#c8c8c8',
+          borderColor: '#b9c0c7', backgroundColor: '#b9c0c7',
           tension: 0.25, pointRadius: 2,
         },
         {
           label: 'Textile Metaphor texts',
           data: index(textile, textile[baseIdx]),
-          borderColor: '#2563a8', backgroundColor: '#2563a8',
+          borderColor: '#0f7a48', backgroundColor: '#0f7a48',
           tension: 0.25, pointRadius: 2,
         },
       ]
@@ -1184,7 +1067,7 @@ new Chart(document.getElementById('chart-year-log'), {
   });
 })();
 
-// ── Stacked temporal by word ───────────────────────────────────────
+// Stacked temporal by word
 function makeStacked(canvasId, words, yearData) {
   new Chart(document.getElementById(canvasId), {
     type: 'bar',
@@ -1203,9 +1086,6 @@ function makeStacked(canvasId, words, yearData) {
 }
 makeStacked('chart-year-textile', DATA.textile_words, DATA.year_textile);
 
-// Per-word (not aggregated) versions of the rate/log/indexed pattern used
-// above for texts-per-year: one line per textile word, plus "All articles"
-// as a grey context line where the chart type allows a shared basis.
 const hitsByWord = w => DATA.all_years.map(y => (DATA.year_textile[y] || {})[w] || 0);
 
 new Chart(document.getElementById('chart-year-hits-rate'), {
@@ -1245,7 +1125,7 @@ new Chart(document.getElementById('chart-year-hits-log'), {
       {
         label: 'All articles',
         data: DATA.all_years.map(y => DATA.survey_by_year[y] || null),
-        borderColor: '#c8c8c8', backgroundColor: '#c8c8c8',
+        borderColor: '#b9c0c7', backgroundColor: '#b9c0c7',
         spanGaps: false, tension: 0.25, pointRadius: 1.5, borderWidth: 2,
       },
       ...DATA.textile_words.map((w, i) => ({
@@ -1265,9 +1145,6 @@ new Chart(document.getElementById('chart-year-hits-log'), {
   }
 });
 
-// Each series rebased to 100 in its own first year with a nonzero value —
-// not one shared baseline year — since different words enter the corpus in
-// different years. Years before a series' own baseline are left null.
 (function(){
   const indexFrom = series => {
     const baseIdx = series.findIndex(v => v > 0);
@@ -1282,7 +1159,7 @@ new Chart(document.getElementById('chart-year-hits-log'), {
   if (allIndexed) {
     datasets.push({
       label: 'All articles', data: allIndexed,
-      borderColor: '#c8c8c8', backgroundColor: '#c8c8c8',
+      borderColor: '#b9c0c7', backgroundColor: '#b9c0c7',
       tension: 0.25, pointRadius: 1.5, borderWidth: 2,
     });
   }
@@ -1309,7 +1186,7 @@ new Chart(document.getElementById('chart-year-hits-log'), {
   });
 })();
 
-// ── Frequency (horizontal bar) ────────────────────────────────────
+// Frequency (horizontal bar)
 function makeFreq(canvasId, freqData, { percent = false } = {}) {
   new Chart(document.getElementById(canvasId), {
     type: 'bar',
@@ -1325,20 +1202,18 @@ function makeFreq(canvasId, freqData, { percent = false } = {}) {
       },
       scales:{
         x:{ grid:GRID, ticks: percent ? { ...TICKS, callback: v => `${v}%` } : TICKS, beginAtZero:true },
-        y:{ grid:{display:false}, ticks:{...TICKS,font:{family:"'JetBrains Mono',monospace",size:11}} }
+        y:{ grid:{display:false}, ticks:{...TICKS,font:{weight:500}} }
       }
     }
   });
 }
 makeFreq('chart-textile-freq', DATA.textile_freq);
 
-// Each word's hits as a share of Textile Metaphor texts in the corpus —
-// the relative counterpart to the absolute frequency chart above.
 makeFreq('chart-textile-freq-rel', DATA.textile_freq.map(([w, n]) => [
   w, DATA.textile_metaphor_texts > 0 ? Math.round(n / DATA.textile_metaphor_texts * 1000) / 10 : 0,
 ]), { percent: true });
 
-// ── Per-word temporal with tabs ────────────────────────────────────
+// Per-word temporal with tabs
 function makeWordTime(canvasId, tabGroupId, yearData, words, { rate = false } = {}) {
   let chart = null;
   const tabs   = document.getElementById(tabGroupId);
@@ -1357,7 +1232,7 @@ function makeWordTime(canvasId, tabGroupId, yearData, words, { rate = false } = 
           const total = DATA.survey_by_year[y] || 0;
           return total > 0 ? Math.round(raw / total * 1000) / 10 : null;
         }),
-        backgroundColor:'#0a0a0a', borderWidth:0,
+        backgroundColor:'#0d1012', borderWidth:0,
       }]},
       options:{
         plugins:{
@@ -1383,7 +1258,7 @@ function makeWordTime(canvasId, tabGroupId, yearData, words, { rate = false } = 
 makeWordTime('chart-textile-word-time','tabs-textile', DATA.year_textile, DATA.textile_words);
 makeWordTime('chart-textile-word-time-rel','tabs-textile-rel', DATA.year_textile, DATA.textile_words, { rate: true });
 
-// ── Co-occurrence cards ───────────────────────────────────────────
+// Co-occurrence cards
 function renderCooc(containerId, coocData, variants) {
   const container = document.getElementById(containerId);
   Object.entries(coocData).forEach(([word, pairs]) => {
@@ -1407,7 +1282,7 @@ function renderCooc(containerId, coocData, variants) {
   });
 }
 
-// ── Temporal co-occurrence/collocation trend (normalised) ──────────
+// Temporal co-occurrence/collocation trend (normalised)
 function makeTrendChart(canvasId, wordTabId, lemmaTabId, yearCoocData, allYears) {
   let chart       = null;
   let currentWord = null;
@@ -1425,7 +1300,7 @@ function makeTrendChart(canvasId, wordTabId, lemmaTabId, yearCoocData, allYears)
       data: { labels: allYears, datasets: [{
         label: lemma,
         data: allYears.map(y => wordData[y] || 0),
-        backgroundColor: '#0a0a0a', borderWidth: 0,
+        backgroundColor: '#0d1012', borderWidth: 0,
       }]},
       options:{ plugins:{legend:{display:false}}, scales:{ x:{grid:GRID,ticks:TICKS}, y:{grid:GRID,ticks:TICKS,beginAtZero:true} } }
     });
@@ -1474,18 +1349,11 @@ makeTrendChart('chart-trend-textile','tabs-trend-textile-word','tabs-trend-texti
 makeTrendChart('chart-trend-textile-colloc','tabs-trend-textile-colloc-word','tabs-trend-textile-colloc-lemma',
                DATA.year_colloc_textile, DATA.all_years);
 
-// ── Co-occurrence / collocation cards ──────────────────────────────
+// Co-occurrence / collocation cards
 renderCooc('cooc-textile', DATA.textile_cooc, DATA.textile_variants);
 renderCooc('colloc-textile', DATA.textile_colloc, DATA.textile_variants);
 
-// ── PNG download for every chart ────────────────────────────────
-// One button per chart-wrap's canvas. Reads the canvas at click time (not
-// at setup time), so it always exports whatever is currently drawn —
-// including charts whose canvas is redrawn on tab clicks (makeWordTime,
-// makeTrendChart), which share one canvas across several rendered charts.
-// Filenames are {section}_{chart}[_{active tab}...] — the same scheme
-// export_chart_images() in dashboard.py uses for the images/ folder, so a
-// browser download and its images/ counterpart always share a name.
+// reads the canvas at click time, so tab-switched charts export whatever is currently drawn
 function slugify(text) {
   return (text || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 }
@@ -1516,20 +1384,6 @@ document.querySelectorAll('.chart-wrap').forEach(wrap => {
 </body>
 </html>"""
 
-# ---------------------------------------------------------------------------
-# 7.  Chart image export
-# ---------------------------------------------------------------------------
-#
-# Renders the just-written dashboard HTML in a headless browser and exports
-# every chart as a PNG into IMAGES_DIR, including every tab combination of
-# "select word"/"select source" charts (each is redrawn and captured in
-# turn). Filenames match the in-page "Download PNG" button exactly:
-# {section}_{chart}[_{active tab}...].png — see the JS slugify()/click
-# handler in HTML_TEMPLATE. Requires Playwright with a Chromium build
-# (`pip install playwright && playwright install chromium`); skipped with a
-# warning, not a hard failure, if that isn't available, since the HTML
-# dashboard and statistics.csv are the more essential outputs.
-
 IMAGES_DIR = Path("../images")
 CHART_ANIMATION_WAIT_MS = 1200  # >= Chart.js's default 1000ms animation duration
 
@@ -1544,12 +1398,8 @@ def _save_canvas_png(page, canvas_selector: str, path: Path) -> None:
 def _export_tab_combinations(page, wrap_selector: str, group_index: int,
                               tab_group_ids: list[str], name_parts: list[str],
                               images_dir: Path, written: list[int]) -> None:
-    """
-    Recurse over every tab group in a chart-wrap (in DOM order), clicking
-    each button and exporting once all groups are exhausted. Later tab
-    groups (e.g. the lemma tabs in a word→lemma co-occurrence chart) are
-    only queried after their preceding group's click has regenerated them.
-    """
+    """Recurse over every tab group in a chart-wrap, clicking each button
+    and exporting once all groups are exhausted."""
     if group_index >= len(tab_group_ids):
         filename = "_".join(name_parts) or "chart"
         _save_canvas_png(page, f"{wrap_selector} canvas", images_dir / f"{filename}.png")
@@ -1589,9 +1439,6 @@ def export_chart_images(html_path: Path, images_dir: Path) -> int:
             page.wait_for_selector(".chart-wrap canvas")
             page.wait_for_timeout(CHART_ANIMATION_WAIT_MS)
 
-            # Co-occurrence & Collocation charts are excluded from image export
-            # (same as their in-page "Download PNG" buttons) — skipped here,
-            # with the remaining chart-wraps re-indexed contiguously from 0.
             page.evaluate("""
                 (() => {
                     let i = 0;
@@ -1623,10 +1470,6 @@ def export_chart_images(html_path: Path, images_dir: Path) -> int:
 
     print()
     return written[0]
-
-# ---------------------------------------------------------------------------
-# 8.  Main
-# ---------------------------------------------------------------------------
 
 def main() -> None:
     if not CLEAN_CSV_PATH.exists():
