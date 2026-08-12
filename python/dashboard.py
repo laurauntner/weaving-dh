@@ -850,12 +850,12 @@ document.getElementById('stat-sources').textContent = DATA.sources.length;
 document.getElementById('stat-years').textContent   =
   DATA.year_range[0] ? `${DATA.year_range[0]}–${DATA.year_range[1]}` : '—';
 
-document.getElementById('stat-textile-metaphor').textContent = DATA.textile_metaphor_texts.toLocaleString();
+document.getElementById('stat-textile-metaphor').textContent = DATA.textile_metaphor_texts.toLocaleString('en-US');
 
 document.getElementById('stat-articles-surveyed').textContent =
-  DATA.articles_surveyed_total != null ? DATA.articles_surveyed_total.toLocaleString() : '—';
+  DATA.articles_surveyed_total != null ? DATA.articles_surveyed_total.toLocaleString('en-US') : '—';
 document.getElementById('stat-textile-rate').textContent =
-  DATA.textile_metaphor_rate_pct != null ? `${String(DATA.textile_metaphor_rate_pct).replace('.', ',')}%` : '—';
+  DATA.textile_metaphor_rate_pct != null ? `${DATA.textile_metaphor_rate_pct}%` : '—';
 
 // "Articles surveyed" / rate-by-source figures are bounded to the corpus's
 // own year range, not each journal's full lifetime — noted wherever that
@@ -942,7 +942,7 @@ document.getElementById('textile-variants-note').textContent =
     options: {
       plugins:{
         legend:{ display:false },
-        tooltip:{ callbacks:{ label: ctx => `${String(Math.round(ctx.parsed.y*10)/10).replace('.', ',')}%` } },
+        tooltip:{ callbacks:{ label: ctx => `${String(Math.round(ctx.parsed.y*10)/10)}%` } },
       },
       scales:{
         x:{ grid:GRID, ticks:{ ...TICKS, maxRotation:30, font:{size:10} } },
@@ -971,7 +971,7 @@ document.getElementById('textile-variants-note').textContent =
     options: {
       plugins: {
         legend: { position:'right', labels:{boxWidth:10,padding:8,font:{size:10}} },
-        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${String(Math.round(ctx.parsed.y*10)/10).replace('.', ',')}%` } },
+        tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${String(Math.round(ctx.parsed.y*10)/10)}%` } },
       },
       scales: {
         x: { grid:GRID, ticks:TICKS },
@@ -1098,7 +1098,7 @@ new Chart(document.getElementById('chart-year-rate'), {
   options: {
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: ctx => `${String(Math.round(ctx.parsed.y*10)/10).replace('.', ',')}%` } },
+      tooltip: { callbacks: { label: ctx => `${String(Math.round(ctx.parsed.y*10)/10)}%` } },
     },
     scales: {
       x: { grid:GRID, ticks:TICKS },
@@ -1228,7 +1228,7 @@ new Chart(document.getElementById('chart-year-hits-rate'), {
   options: {
     plugins: {
       legend: { position:'right', labels:{boxWidth:10,padding:8,font:{size:10}} },
-      tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${String(Math.round(ctx.parsed.y*10)/10).replace('.', ',')}%` } },
+      tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${String(Math.round(ctx.parsed.y*10)/10)}%` } },
     },
     scales: {
       x: { grid:GRID, ticks:TICKS },
@@ -1321,7 +1321,7 @@ function makeFreq(canvasId, freqData, { percent = false } = {}) {
       indexAxis:'y',
       plugins:{
         legend:{display:false},
-        tooltip: percent ? { callbacks:{ label: ctx => `${String(ctx.parsed.x).replace('.', ',')}%` } } : {},
+        tooltip: percent ? { callbacks:{ label: ctx => `${String(ctx.parsed.x)}%` } } : {},
       },
       scales:{
         x:{ grid:GRID, ticks: percent ? { ...TICKS, callback: v => `${v}%` } : TICKS, beginAtZero:true },
@@ -1362,7 +1362,7 @@ function makeWordTime(canvasId, tabGroupId, yearData, words, { rate = false } = 
       options:{
         plugins:{
           legend:{display:false},
-          tooltip: rate ? { callbacks:{ label: ctx => `${String(ctx.parsed.y).replace('.', ',')}%` } } : {},
+          tooltip: rate ? { callbacks:{ label: ctx => `${String(ctx.parsed.y)}%` } } : {},
         },
         scales:{
           x:{grid:GRID,ticks:TICKS},
