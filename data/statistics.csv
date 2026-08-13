@@ -3,8 +3,8 @@ sources_count,,,,,6
 year_range_min,,,,,1981
 year_range_max,,,,,2026
 textile_metaphor_texts_total,,,,,169
-articles_surveyed_total,,,,,15321
-textile_metaphor_rate_pct,,,,,1.18
+articles_surveyed_total,,,,,15422
+textile_metaphor_rate_pct,,,,,1.17
 source_text_count,,,,Digital Humanities Quarterly,50
 source_text_count,,,,Index of DH Conferences,50
 source_text_count,,,,Literary and Linguistic Computing/Digital Scholarship in the Humanities,39
@@ -72,49 +72,49 @@ year_all_articles,2003,,,,162
 year_texts,2004,,,,0
 year_all_articles,2004,,,,177
 year_texts,2005,,,,2
-year_all_articles,2005,,,,235
+year_all_articles,2005,,,,243
 year_texts,2006,,,,0
-year_all_articles,2006,,,,229
+year_all_articles,2006,,,,234
 year_texts,2007,,,,3
-year_all_articles,2007,,,,187
+year_all_articles,2007,,,,189
 year_texts,2008,,,,0
-year_all_articles,2008,,,,229
+year_all_articles,2008,,,,235
 year_texts,2009,,,,6
-year_all_articles,2009,,,,306
+year_all_articles,2009,,,,310
 year_texts,2010,,,,3
 year_all_articles,2010,,,,204
 year_texts,2011,,,,3
-year_all_articles,2011,,,,288
+year_all_articles,2011,,,,293
 year_texts,2012,,,,4
-year_all_articles,2012,,,,332
+year_all_articles,2012,,,,347
 year_texts,2013,,,,8
-year_all_articles,2013,,,,444
+year_all_articles,2013,,,,453
 year_texts,2014,,,,9
 year_all_articles,2014,,,,559
 year_texts,2015,,,,10
-year_all_articles,2015,,,,423
+year_all_articles,2015,,,,430
 year_texts,2016,,,,8
 year_all_articles,2016,,,,800
 year_texts,2017,,,,10
 year_all_articles,2017,,,,736
 year_texts,2018,,,,7
-year_all_articles,2018,,,,861
+year_all_articles,2018,,,,867
 year_texts,2019,,,,8
-year_all_articles,2019,,,,1006
+year_all_articles,2019,,,,1011
 year_texts,2020,,,,3
-year_all_articles,2020,,,,872
+year_all_articles,2020,,,,873
 year_texts,2021,,,,5
-year_all_articles,2021,,,,424
+year_all_articles,2021,,,,431
 year_texts,2022,,,,13
-year_all_articles,2022,,,,864
+year_all_articles,2022,,,,868
 year_texts,2023,,,,10
-year_all_articles,2023,,,,484
+year_all_articles,2023,,,,485
 year_texts,2024,,,,5
-year_all_articles,2024,,,,239
+year_all_articles,2024,,,,246
 year_texts,2025,,,,17
-year_all_articles,2025,,,,362
+year_all_articles,2025,,,,366
 year_texts,2026,,,,10
-year_all_articles,2026,,,,259
+year_all_articles,2026,,,,264
 year_word_hits,2013,knit,,,1
 year_word_hits,2013,weave,,,2
 year_word_hits,2013,stitch,,,3
@@ -130,12 +130,12 @@ year_word_hits,2025,thread,,,1
 year_word_hits,2025,stitch,,,2
 year_word_hits,2025,tapestry,,,7
 year_word_hits,2012,knit,,,1
-year_word_hits,2012,loom,,,1
 year_word_hits,2012,weave,,,1
+year_word_hits,2012,loom,,,1
 year_word_hits,2012,thread,,,2
 year_word_hits,2009,fabric,,,1
-year_word_hits,2009,weave,,,1
 year_word_hits,2009,tapestry,,,1
+year_word_hits,2009,weave,,,1
 year_word_hits,2009,stitch,,,1
 year_word_hits,2009,thread,,,3
 year_word_hits,2011,weave,,,1
@@ -157,37 +157,37 @@ year_word_hits,2017,stitch,,,1
 year_word_hits,2017,thread,,,1
 year_word_hits,2018,knit,,,1
 year_word_hits,2018,stitch,,,2
-year_word_hits,2018,thread,,,2
 year_word_hits,2018,weave,,,3
-year_word_hits,2018,warp,,,1
+year_word_hits,2018,thread,,,2
 year_word_hits,2018,weft,,,1
+year_word_hits,2018,warp,,,1
 year_word_hits,2019,stitch,,,4
 year_word_hits,2019,weave,,,3
 year_word_hits,2019,thread,,,2
-year_word_hits,2020,weave,,,2
 year_word_hits,2020,tapestry,,,1
+year_word_hits,2020,weave,,,2
 year_word_hits,2020,stitch,,,1
-year_word_hits,2021,thread,,,3
 year_word_hits,2021,tapestry,,,1
+year_word_hits,2021,thread,,,3
 year_word_hits,2021,warp,,,2
 year_word_hits,2021,weft,,,1
 year_word_hits,2021,weave,,,1
 year_word_hits,2021,knit,,,1
 year_word_hits,2022,thread,,,2
 year_word_hits,2022,weave,,,11
-year_word_hits,2022,warp,,,1
 year_word_hits,2022,weft,,,1
+year_word_hits,2022,warp,,,1
 year_word_hits,2022,loom,,,1
 year_word_hits,2022,tapestry,,,1
 year_word_hits,2023,knit,,,1
-year_word_hits,2023,thread,,,2
 year_word_hits,2023,fabric,,,1
+year_word_hits,2023,thread,,,2
 year_word_hits,2023,weave,,,5
 year_word_hits,2023,stitch,,,1
 year_word_hits,2023,tapestry,,,1
 year_word_hits,2026,stitch,,,3
-year_word_hits,2026,weave,,,4
 year_word_hits,2026,tapestry,,,3
+year_word_hits,2026,weave,,,4
 year_word_hits,2026,thread,,,1
 year_word_hits,2026,fabric,,,1
 year_word_hits,2010,thread,,,2
@@ -204,16 +204,16 @@ year_word_hits,1999,thread,,,1
 year_word_hits,1999,weave,,,2
 year_word_hits,1981,knit,,,1
 year_word_hits,1990,weave,,,2
-year_word_hits,1990,warp,,,1
 year_word_hits,1990,weft,,,1
+year_word_hits,1990,warp,,,1
 year_word_hits,1994,weave,,,2
 year_word_hits,1996,weave,,,1
 year_word_hits,2002,stitch,,,2
 year_word_hits,2002,weave,,,1
 year_word_hits,2005,knit,,,1
 year_word_hits,2005,weave,,,1
-year_word_hits,1993,weave,,,2
 year_word_hits,1993,spin,,,1
+year_word_hits,1993,weave,,,2
 year_word_hits,1987,tapestry,,,1
 year_word_hits,1988,tapestry,,,1
 year_word_hits,1995,weave,,,1
@@ -246,6 +246,7 @@ source_all_articles,,,,Literary and Linguistic Computing/Digital Scholarship in 
 source_all_articles,,,,Computers and Translation/Computers and the Humanities/Machine Translation/Language Resources and Evaluation,1808
 source_all_articles,,,,Journal of Cultural Analytics,96
 source_all_articles,,,,Journal of the Text Encoding Initiative,155
+source_all_articles,,,,Digital Medievalist,101
 source_all_articles,,,,Digital Classics Online,135
 source_year_texts,2013,,,Journal of the Text Encoding Initiative,2
 source_year_texts,2014,,,Journal of the Text Encoding Initiative,1
@@ -601,6 +602,52 @@ source_year_all_articles,2023,,,Journal of the Text Encoding Initiative,7
 source_year_all_articles,2024,,,Journal of the Text Encoding Initiative,23
 source_year_all_articles,2025,,,Journal of the Text Encoding Initiative,5
 source_year_all_articles,2026,,,Journal of the Text Encoding Initiative,4
+source_year_all_articles,1981,,,Digital Medievalist,0
+source_year_all_articles,1982,,,Digital Medievalist,0
+source_year_all_articles,1983,,,Digital Medievalist,0
+source_year_all_articles,1984,,,Digital Medievalist,0
+source_year_all_articles,1985,,,Digital Medievalist,0
+source_year_all_articles,1986,,,Digital Medievalist,0
+source_year_all_articles,1987,,,Digital Medievalist,0
+source_year_all_articles,1988,,,Digital Medievalist,0
+source_year_all_articles,1989,,,Digital Medievalist,0
+source_year_all_articles,1990,,,Digital Medievalist,0
+source_year_all_articles,1991,,,Digital Medievalist,0
+source_year_all_articles,1992,,,Digital Medievalist,0
+source_year_all_articles,1993,,,Digital Medievalist,0
+source_year_all_articles,1994,,,Digital Medievalist,0
+source_year_all_articles,1995,,,Digital Medievalist,0
+source_year_all_articles,1996,,,Digital Medievalist,0
+source_year_all_articles,1997,,,Digital Medievalist,0
+source_year_all_articles,1998,,,Digital Medievalist,0
+source_year_all_articles,1999,,,Digital Medievalist,0
+source_year_all_articles,2000,,,Digital Medievalist,0
+source_year_all_articles,2001,,,Digital Medievalist,0
+source_year_all_articles,2002,,,Digital Medievalist,0
+source_year_all_articles,2003,,,Digital Medievalist,0
+source_year_all_articles,2004,,,Digital Medievalist,0
+source_year_all_articles,2005,,,Digital Medievalist,8
+source_year_all_articles,2006,,,Digital Medievalist,5
+source_year_all_articles,2007,,,Digital Medievalist,2
+source_year_all_articles,2008,,,Digital Medievalist,6
+source_year_all_articles,2009,,,Digital Medievalist,4
+source_year_all_articles,2010,,,Digital Medievalist,0
+source_year_all_articles,2011,,,Digital Medievalist,5
+source_year_all_articles,2012,,,Digital Medievalist,15
+source_year_all_articles,2013,,,Digital Medievalist,9
+source_year_all_articles,2014,,,Digital Medievalist,0
+source_year_all_articles,2015,,,Digital Medievalist,7
+source_year_all_articles,2016,,,Digital Medievalist,0
+source_year_all_articles,2017,,,Digital Medievalist,0
+source_year_all_articles,2018,,,Digital Medievalist,6
+source_year_all_articles,2019,,,Digital Medievalist,5
+source_year_all_articles,2020,,,Digital Medievalist,1
+source_year_all_articles,2021,,,Digital Medievalist,7
+source_year_all_articles,2022,,,Digital Medievalist,4
+source_year_all_articles,2023,,,Digital Medievalist,1
+source_year_all_articles,2024,,,Digital Medievalist,7
+source_year_all_articles,2025,,,Digital Medievalist,4
+source_year_all_articles,2026,,,Digital Medievalist,5
 source_year_all_articles,1981,,,Digital Classics Online,0
 source_year_all_articles,1982,,,Digital Classics Online,0
 source_year_all_articles,1983,,,Digital Classics Online,0

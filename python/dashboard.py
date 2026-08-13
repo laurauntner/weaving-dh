@@ -266,7 +266,6 @@ def build_stats(clean_rows: list[dict]) -> dict:
         },
     }
 
-# "Digital Medievalist" has no counterpart in JOURNAL_COUNTS_PATH, so it's excluded here
 JOURNAL_COUNTS_NAME_MAP: dict[str, str] = {
     "Index of DH Conferences": "Index of DH Conferences",
     "Digital Humanities Quarterly": "Digital Humanities Quarterly",
@@ -276,6 +275,7 @@ JOURNAL_COUNTS_NAME_MAP: dict[str, str] = {
         "Computers and the Humanities / Language Resources and Evaluation",
     "Journal of Cultural Analytics": "Journal of Cultural Analytics",
     "Journal of the Text Encoding Initiative": "Journal of the Text Encoding Initiative",
+    "Digital Medievalist": "Digital Medievalist",
     "Digital Classics Online": "Digital Classics Online",
 }
 
