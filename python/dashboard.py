@@ -569,7 +569,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <br>
   <p class="chart-title">Sources in corpus</p>
   <table class="source-table">
-    <thead><tr><th>Source</th><th>Texts with textile metaphors</th></tr></thead>
+    <thead><tr><th>Source and time span with textile metaphors</th><th>Texts with textile metaphors</th></tr></thead>
     <tbody id="source-tbody"></tbody>
   </table>
 </section>

@@ -33,7 +33,7 @@ Construction-word exclusions
 Usage
 -----
   python kwic_enrichment.py
-  (adjust PATH constants in section 0 if needed)
+  (adjust the PATH constants below if needed)
 """
 
 import csv
@@ -45,10 +45,6 @@ import nltk
 from nltk.stem import PorterStemmer
 import openpyxl
 from openpyxl import load_workbook
-
-# ---------------------------------------------------------------------------
-# 0.  Configuration
-# ---------------------------------------------------------------------------
 
 XLSX_PATH   = Path("../../Weaving DH Data Table.xlsx")
 TXT_DIR     = Path("../../Weaving DH Data")
@@ -64,19 +60,11 @@ COL_KWIC_TEXTILE  = 6
 COL_CONSTRUCTION  = 9
 COL_KWIC_CONST    = 10
 
-# ---------------------------------------------------------------------------
-# 1.  NLTK bootstrap
-# ---------------------------------------------------------------------------
-
 for _res in ("punkt", "punkt_tab"):
     try:
         nltk.data.find(f"tokenizers/{_res}")
     except LookupError:
         nltk.download(_res, quiet=True)
-
-# ---------------------------------------------------------------------------
-# 2.  Stemmer and normalisation
-# ---------------------------------------------------------------------------
 
 _stemmer = PorterStemmer()
 
@@ -101,10 +89,6 @@ CONSTRUCTION_CANONICAL: dict[str, str] = {
 }
 
 BUILD_STEM = normalised_stem("build")
-
-# ---------------------------------------------------------------------------
-# 3.  Text loading and tokenisation
-# ---------------------------------------------------------------------------
 
 _text_cache:  dict[str, str]                         = {}
 _token_cache: dict[str, tuple[list[str], list[str]]] = {}
@@ -153,23 +137,16 @@ def get_tokens(article_id: str) -> tuple[list[str], list[str]]:
     _token_cache[article_id] = (words, gaps)
     return words, gaps
 
-# ---------------------------------------------------------------------------
-# 4.  Construction false-positive filters
-# ---------------------------------------------------------------------------
+# Construction false-positive filters.
 #
-# build* exclusions:
-#   - "building on / built on / build on / upon"  →  discourse connective
-#   - "built-in"  →  technical adjective (built-in feature, built-in search, …)
+# build* exclusions: "building on / built on / build on / upon" (discourse
+# connective, not a metaphor); "built-in" (technical adjective).
 #
-# mine exclusions:
-#   - "mine" as possessive pronoun: preceded by "of", "is", "was", "not",
-#     "called", "touch", or followed by "begins", "own"; or enclosed in
-#     parentheses/brackets: (mine) / [mine]
-#   - "mines" / "mine" preceded or followed by geological context words
-#     (quarry/quarries, lithium, rare-earth, metal, ore, mineral, copper,
-#     zinc, coal, gold, silver, iron, stone, rock, archaeological, excavat*)
-#
-# All checks operate on the already-tokenised word list and its gap list.
+# mine exclusions: "mine" as a possessive pronoun (preceded by "of", "is",
+# "was", "not", "called", "touch", or followed by "begins", "own"; or
+# enclosed in parentheses/brackets); "mines"/"mine" preceded or followed by
+# geological context words (quarry, lithium, metal, ore, mineral, copper,
+# zinc, coal, gold, silver, iron, stone, rock, archaeological, excavat*).
 
 MINE_STEM  = normalised_stem("mine")
 
@@ -184,7 +161,6 @@ _GEO_WORDS = {
 # Words that mark "mine" as a possessive pronoun when immediately adjacent
 _MINE_POSSESSIVE_PREV = {"of", "is", "was", "not", "called", "touch", "only"}
 _MINE_POSSESSIVE_NEXT = {"begins", "begin", "own", "as"}
-
 
 
 def is_build_on(words: list[str], i: int) -> bool:
@@ -239,7 +215,6 @@ def is_mine_geological(words: list[str], i: int) -> bool:
     return False
 
 
-
 def should_exclude(
     words: list[str],
     gaps: list[str],
@@ -263,10 +238,6 @@ def should_exclude(
             return True
 
     return False
-
-# ---------------------------------------------------------------------------
-# 5.  KWIC extraction — plain text output
-# ---------------------------------------------------------------------------
 
 
 def find_kwic_hits(
@@ -348,10 +319,6 @@ def build_kwic_text_multi(
             blocks.append(f"{word}:\n{block}")
     return "\n\n".join(blocks)
 
-# ---------------------------------------------------------------------------
-# 6.  Construction-word detection
-# ---------------------------------------------------------------------------
-
 
 def detect_construction_words(article_id: str) -> list[str]:
     words, gaps = get_tokens(article_id)
@@ -366,10 +333,6 @@ def detect_construction_words(article_id: str) -> list[str]:
         if not should_exclude(words, gaps, i, ns):
             found[canonical] = True
     return [c for c in CONSTRUCTION_SEEDS if found.get(c)]
-
-# ---------------------------------------------------------------------------
-# 7.  Parse textile words from col E
-# ---------------------------------------------------------------------------
 
 
 def parse_textile_words(cell_value) -> list[str]:
@@ -391,10 +354,6 @@ def parse_textile_words(cell_value) -> list[str]:
             seen_stems.add(s)
             result.append(word)
     return result
-
-# ---------------------------------------------------------------------------
-# 8.  Main
-# ---------------------------------------------------------------------------
 
 
 def main() -> None:
