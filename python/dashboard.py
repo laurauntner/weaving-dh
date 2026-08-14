@@ -1,4 +1,4 @@
-"""Builds the Textile Metaphors in DH Scholarship dashboard from the clean
+"""Builds the Textile metaphors in DH Scholarship dashboard from the clean
 data table and the journal article-count survey."""
 
 import base64
@@ -194,7 +194,7 @@ def build_stats(clean_rows: list[dict]) -> dict:
     textile_freq  : Counter     = Counter()
     year_textile  : defaultdict = defaultdict(Counter)
 
-    year_text_counts: Counter = Counter()  # Textile Metaphor texts per year, used to normalise hit rates
+    year_text_counts: Counter = Counter()  # Textile metaphor texts per year, used to normalise hit rates
 
     source_textile_by_cat : defaultdict = defaultdict(lambda: defaultdict(int))
     source_year_counts    : defaultdict = defaultdict(Counter)
@@ -209,7 +209,7 @@ def build_stats(clean_rows: list[dict]) -> dict:
             if year:
                 source_years[source].append(year)
                 source_year_counts[source][year] += 1
-            source_textile_by_cat[source]["Textile Metaphor"] += 1
+            source_textile_by_cat[source]["Textile metaphor"] += 1
 
         for w in text_words[tid]:
             textile_freq[w] += 1
@@ -291,7 +291,7 @@ def load_journal_counts(path: Path) -> dict[str, dict[int, int]]:
 def compute_survey_coverage(clean_rows: list[dict],
                              journal_counts: dict[str, dict[int, int]],
                              all_years: list[int]) -> dict:
-    """Textile Metaphor rate/coverage figures against each journal's full
+    """Textile metaphor rate/coverage figures against each journal's full
     output, for the 7 sources with a counterpart in journal_counts."""
     full_lifetime_total = sum(
         sum(journal_counts.get(mapped, {}).values())
@@ -385,7 +385,7 @@ def build_statistics_rows(stats: dict) -> list[list]:
         add("word_variants", variants, word=word)
 
     for source, cats in stats["source_textile_by_cat"].items():
-        add("source_text_count_textile_metaphor", cats.get("Textile Metaphor", 0), source=source)
+        add("source_text_count_textile_metaphor", cats.get("Textile metaphor", 0), source=source)
 
     for source, count in stats.get("survey_by_source", {}).items():
         add("source_all_articles", count, source=source)
@@ -432,7 +432,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Textile Metaphors in Digital Humanities Scholarship</title>
+<title>Textile metaphors in Digital Humanities Scholarship</title>
 <link rel="icon" type="image/jpeg" href="https://ids.si.edu/ids/deliveryService?id=NMAH-AHB2019q157831-000001&max=64">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -532,7 +532,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <header>
   <div class="header-inner">
     <div>
-      <h1 class="site-title">Textile Metaphors in Digital Humanities Scholarship</h1>
+      <h1 class="site-title">Textile metaphors in Digital Humanities Scholarship</h1>
       <p class="site-contributors">Laura Untner, Quinn Daedal, Tessa Gengnagel</p>
     </div>
     <img class="header-logo"
@@ -563,13 +563,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="stat-card"><div class="stat-number" id="stat-sources">—</div><div class="stat-label">Sources</div><div class="stat-sub-label">(8 surveyed)</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-years">—</div><div class="stat-label">Year range</div><div class="stat-sub-label">(corpus with textile metaphors)</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-textile-metaphor">—</div><div class="stat-label">Metaphorical Textile texts</div></div>
-    <div class="stat-card"><div class="stat-number" id="stat-articles-surveyed">—</div><div class="stat-label">Articles surveyed</div></div>
+    <div class="stat-card"><div class="stat-number" id="stat-articles-surveyed">—</div><div class="stat-label">Texts surveyed</div></div>
     <div class="stat-card"><div class="stat-number" id="stat-textile-rate">—</div><div class="stat-label">Textile metaphor rate</div><div class="stat-sub-label stat-year-span"></div></div>
   </div>
   <br>
   <p class="chart-title">Sources in corpus</p>
   <table class="source-table">
-    <thead><tr><th>Source</th><th>Texts with Textile Metaphors</th></tr></thead>
+    <thead><tr><th>Source</th><th>Texts with Textile metaphors</th></tr></thead>
     <tbody id="source-tbody"></tbody>
   </table>
 </section>
@@ -580,25 +580,25 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="chart-wrap">
       <p class="chart-title">Texts with textile metaphors per year</p>
       <canvas id="chart-year-total" height="140"></canvas>
-      <p class="chart-note">Distinct texts per year with a Textile Metaphor use.</p>
+      <p class="chart-note">Distinct texts per year with a Textile metaphor use.</p>
     </div>
     <div class="chart-wrap">
-      <p class="chart-title">All articles per year</p>
+      <p class="chart-title">All texts per year</p>
       <canvas id="chart-year-all" height="140"></canvas>
-      <p class="chart-note">Total articles published per year.</p>
+      <p class="chart-note">Total texts published per year.</p>
     </div>
   </div>
 
   <div class="chart-wrap">
-    <p class="chart-title">Textile Metaphor rate per year</p>
+    <p class="chart-title">Textile metaphor rate per year</p>
     <canvas id="chart-year-rate" height="80"></canvas>
-    <p class="chart-note">Textile Metaphor texts as a share of all articles published that year. Years without survey data are omitted.</p>
+    <p class="chart-note">Textile metaphor texts as a share of all texts published that year. Years without survey data are omitted.</p>
   </div>
 
   <div class="chart-wrap">
-    <p class="chart-title">Textile Metaphor texts vs. all articles (log scale)</p>
+    <p class="chart-title">Textile metaphor texts vs. all texts (log scale)</p>
     <canvas id="chart-year-log" height="100"></canvas>
-    <p class="chart-note">Both series on a shared logarithmic axis, so their growth is directly comparable despite the difference in magnitude. Years with zero Textile Metaphor texts are omitted — undefined on a log scale.</p>
+    <p class="chart-note">Both series on a shared logarithmic axis, so their growth is directly comparable despite the difference in magnitude. Years with zero Textile metaphor texts are omitted — undefined on a log scale.</p>
   </div>
 
   <div class="chart-wrap">
@@ -617,19 +617,19 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="chart-wrap">
     <p class="chart-title">Textile word hit rate per year, by word</p>
     <canvas id="chart-year-hits-rate" height="200"></canvas>
-    <p class="chart-note">Each textile word's hits as a share of all articles published that year. Years without survey data are omitted.</p>
+    <p class="chart-note">Each textile word's hits as a share of all texts published that year. Years without survey data are omitted.</p>
   </div>
 
   <div class="chart-wrap">
-    <p class="chart-title">Textile word hits vs. all articles, by word (log scale)</p>
+    <p class="chart-title">Textile word hits vs. all texts, by word (log scale)</p>
     <canvas id="chart-year-hits-log" height="200"></canvas>
-    <p class="chart-note">Each word plotted against all articles (context, grey) on a shared logarithmic axis, so growth across words of very different frequency is directly comparable. Years with zero hits for a given word are omitted — undefined on a log scale.</p>
+    <p class="chart-note">Each word plotted against all texts (context, grey) on a shared logarithmic axis, so growth across words of very different frequency is directly comparable. Years with zero hits for a given word are omitted — undefined on a log scale.</p>
   </div>
 
   <div class="chart-wrap">
     <p class="chart-title">Indexed growth, by word</p>
     <canvas id="chart-year-hits-indexed" height="200"></canvas>
-    <p class="chart-note">Each word (and all articles, for context) rebased to 100 in its own first year with a nonzero count, showing relative growth from each word's own starting point rather than absolute scale.</p>
+    <p class="chart-note">Each word (and all texts, for context) rebased to 100 in its own first year with a nonzero count, showing relative growth from each word's own starting point rather than absolute scale.</p>
   </div>
 </section>
 
@@ -640,7 +640,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="chart-wrap">
       <p class="chart-title">Frequency across corpus</p>
       <canvas id="chart-textile-freq"></canvas>
-      <p class="chart-note">Textile Metaphor texts only. Search used unlemmatised surface forms; morphological variants (shown above) were grouped manually in post-processing.</p>
+      <p class="chart-note">Textile metaphor texts only. Search used unlemmatised surface forms; morphological variants (shown above) were grouped manually in post-processing.</p>
     </div>
     <div class="chart-wrap">
       <p class="chart-title">Temporal distribution — select word</p>
@@ -654,13 +654,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="chart-wrap">
       <p class="chart-title">Relative frequency across corpus</p>
       <canvas id="chart-textile-freq-rel"></canvas>
-      <p class="chart-note">Each word's hits as a share of Textile Metaphor texts in the corpus.</p>
+      <p class="chart-note">Each word's hits as a share of Textile metaphor texts in the corpus.</p>
     </div>
     <div class="chart-wrap">
       <p class="chart-title">Relative temporal distribution — select word</p>
       <div class="tab-group" id="tabs-textile-rel"></div>
       <canvas id="chart-textile-word-time-rel" height="160"></canvas>
-      <p class="chart-note">Selected word's hits as a share of all articles published that year. Years without survey data are omitted.</p>
+      <p class="chart-note">Selected word's hits as a share of all texts published that year. Years without survey data are omitted.</p>
     </div>
   </div>
 </section>
@@ -668,39 +668,39 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <section id="sources">
   <h2 class="section-title">By Source</h2>
   <div class="chart-wrap">
-    <p class="chart-title">Textile Metaphor Texts per Source</p>
+    <p class="chart-title">Textile metaphor Texts per Source</p>
     <canvas id="chart-source-ratio" height="120"></canvas>
-    <p class="chart-note">Texts per source in which a Textile Metaphor word appeared.</p>
+    <p class="chart-note">Texts per source in which a Textile metaphor word appeared.</p>
   </div>
 
   <div class="chart-wrap">
-    <p class="chart-title">All Articles per Source <span class="stat-year-span"></span></p>
+    <p class="chart-title">All Texts per Source <span class="stat-year-span"></span></p>
     <canvas id="chart-source-all" height="120"></canvas>
-    <p class="chart-note">Total articles published.</p>
+    <p class="chart-note">Total texts published.</p>
   </div>
 
   <div class="chart-wrap">
-    <p class="chart-title">Textile Metaphor rate by source <span class="stat-year-span"></span></p>
+    <p class="chart-title">Textile metaphor rate by source <span class="stat-year-span"></span></p>
     <canvas id="chart-source-rate" height="120"></canvas>
-    <p class="chart-note">Textile Metaphor texts as a share of all articles published, by source. Sources without survey data are omitted.</p>
+    <p class="chart-note">Textile metaphor texts as a share of all texts published, by source. Sources without survey data are omitted.</p>
   </div>
 
   <div class="chart-wrap">
-    <p class="chart-title">Textile Metaphor rate per year, by source</p>
+    <p class="chart-title">Textile metaphor rate per year, by source</p>
     <canvas id="chart-source-rate-timeline" height="200"></canvas>
-    <p class="chart-note">Each source's Textile Metaphor texts as a share of its own articles published that year. Years without survey data for a source are omitted.</p>
+    <p class="chart-note">Each source's Textile metaphor texts as a share of its own texts published that year. Years without survey data for a source are omitted.</p>
   </div>
 
   <div class="chart-wrap">
-    <p class="chart-title">Textile Metaphor texts vs. all articles, by source (log scale)</p>
+    <p class="chart-title">Textile metaphor texts vs. all texts, by source (log scale)</p>
     <canvas id="chart-source-log" height="200"></canvas>
-    <p class="chart-note">Each source's Textile Metaphor text count plotted against total articles (context, grey) on a shared logarithmic axis, so growth across sources of very different output is directly comparable. Years with zero texts for a given source are omitted — undefined on a log scale.</p>
+    <p class="chart-note">Each source's Textile metaphor text count plotted against total texts (context, grey) on a shared logarithmic axis, so growth across sources of very different output is directly comparable. Years with zero texts for a given source are omitted — undefined on a log scale.</p>
   </div>
 
   <div class="chart-wrap">
     <p class="chart-title">Indexed growth, by source</p>
     <canvas id="chart-source-indexed" height="200"></canvas>
-    <p class="chart-note">Each source (and all articles, for context) rebased to 100 in its own first year with a nonzero count, showing relative growth from each source's own starting point rather than absolute scale.</p>
+    <p class="chart-note">Each source (and all texts, for context) rebased to 100 in its own first year with a nonzero count, showing relative growth from each source's own starting point rather than absolute scale.</p>
   </div>
 </section>
 
@@ -708,15 +708,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <h2 class="section-title">Co-occurrence &amp; Collocation</h2>
 
   <p class="subsection-title">Top 5 Co-occurring Words in KWIC Context</p>
-  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1rem;">Most frequent lemmatised content words within a ±15-token KWIC window, drawn from Textile Metaphor occurrences only. Co-occurrence analysis uses WordNet noun lemmatization, which differs from the PorterStemmer used at KWIC search time.</p>
+  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1rem;">Most frequent lemmatised content words within a ±15-token KWIC window, drawn from Textile metaphor occurrences only. Co-occurrence analysis uses WordNet noun lemmatization, which differs from the PorterStemmer used at KWIC search time.</p>
   <div class="cooc-grid" id="cooc-textile"></div>
 
   <p class="subsection-title">Immediate Collocations (±2 tokens)</p>
-  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1rem;">Words appearing directly adjacent to the hit token, revealing typical phrasal patterns (e.g. <em>building a corpus</em>, <em>weaving together</em>), drawn from Textile Metaphor occurrences only. Left and right positions are pooled.</p>
+  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1rem;">Words appearing directly adjacent to the hit token, revealing typical phrasal patterns (e.g. <em>building a corpus</em>, <em>weaving together</em>), drawn from Textile metaphor occurrences only. Left and right positions are pooled.</p>
   <div class="cooc-grid" id="colloc-textile"></div>
 
   <p class="subsection-title">Temporal Co-occurrence &amp; Collocation Trend</p>
-  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1.5rem;">Frequency of a selected co-occurring or collocating term alongside a given Textile Metaphor word, normalised per text per year.</p>
+  <p style="font-size:0.85rem;color:var(--grey-2);margin-bottom:1.5rem;">Frequency of a selected co-occurring or collocating term alongside a given Textile metaphor word, normalised per text per year.</p>
   <div class="chart-row">
     <div class="chart-wrap">
       <p class="chart-title">Co-occurrence — select word, then co-occurring term</p>
@@ -772,8 +772,9 @@ const tbody = document.getElementById('source-tbody');
 DATA.sources.forEach(([j,n]) => {
   const yr    = DATA.source_years[j];
   const yrStr = yr ? (yr[0]===yr[1] ? ` (${yr[0]})` : ` (${yr[0]}–${yr[1]})`) : '';
+  const jBr   = j.split('/').join('<br>');
   const tr    = document.createElement('tr');
-  tr.innerHTML = `<td>${j}${yrStr}</td><td>${n}</td>`;
+  tr.innerHTML = `<td>${jBr}${yrStr}</td><td>${n}</td>`;
   tbody.appendChild(tr);
 });
 
@@ -790,7 +791,7 @@ document.getElementById('textile-variants-note').textContent =
     data: {
       labels: sources,
       datasets: [{
-        data: sources.map(s => (DATA.source_textile_by_cat[s]||{})['Textile Metaphor'] || 0),
+        data: sources.map(s => (DATA.source_textile_by_cat[s]||{})['Textile metaphor'] || 0),
         backgroundColor: '#0f7a48',
         borderWidth: 0,
       }]
@@ -830,7 +831,7 @@ document.getElementById('textile-variants-note').textContent =
       datasets: [{
         data: sources.map(s => {
           const total = DATA.survey_by_source[s] || 0;
-          const texts = (DATA.source_textile_by_cat[s]||{})['Textile Metaphor'] || 0;
+          const texts = (DATA.source_textile_by_cat[s]||{})['Textile metaphor'] || 0;
           return total > 0 ? texts / total * 100 : null;
         }),
         backgroundColor: '#0f7a48',
@@ -884,7 +885,7 @@ document.getElementById('textile-variants-note').textContent =
       labels: DATA.all_years,
       datasets: [
         {
-          label: 'All articles',
+          label: 'All texts',
           data: DATA.all_years.map(y => DATA.survey_by_year[y] || null),
           borderColor: '#b9c0c7', backgroundColor: '#b9c0c7',
           spanGaps: false, tension: 0.25, pointRadius: 1.5, borderWidth: 2,
@@ -919,7 +920,7 @@ document.getElementById('textile-variants-note').textContent =
     const allIndexed = indexFrom(allSeries);
     if (allIndexed) {
       datasets.push({
-        label: 'All articles', data: allIndexed,
+        label: 'All texts', data: allIndexed,
         borderColor: '#b9c0c7', backgroundColor: '#b9c0c7',
         tension: 0.25, pointRadius: 1.5, borderWidth: 2,
       });
@@ -1003,14 +1004,14 @@ new Chart(document.getElementById('chart-year-log'), {
     labels: DATA.all_years,
     datasets: [
       {
-        label: 'All articles',
+        label: 'All texts',
         data: DATA.all_years.map(y => DATA.survey_by_year[y] || null),
         borderColor: '#b9c0c7',
         backgroundColor: '#b9c0c7',
         spanGaps: false, tension: 0.25, pointRadius: 2,
       },
       {
-        label: 'Textile Metaphor texts',
+        label: 'Textile metaphor texts',
         data: DATA.all_years.map(y => DATA.year_counts[y] || null),
         borderColor: '#0f7a48',
         backgroundColor: '#0f7a48',
@@ -1044,13 +1045,13 @@ new Chart(document.getElementById('chart-year-log'), {
       labels: years,
       datasets: [
         {
-          label: 'All articles',
+          label: 'All texts',
           data: index(all, all[baseIdx]),
           borderColor: '#b9c0c7', backgroundColor: '#b9c0c7',
           tension: 0.25, pointRadius: 2,
         },
         {
-          label: 'Textile Metaphor texts',
+          label: 'Textile metaphor texts',
           data: index(textile, textile[baseIdx]),
           borderColor: '#0f7a48', backgroundColor: '#0f7a48',
           tension: 0.25, pointRadius: 2,
@@ -1123,7 +1124,7 @@ new Chart(document.getElementById('chart-year-hits-log'), {
     labels: DATA.all_years,
     datasets: [
       {
-        label: 'All articles',
+        label: 'All texts',
         data: DATA.all_years.map(y => DATA.survey_by_year[y] || null),
         borderColor: '#b9c0c7', backgroundColor: '#b9c0c7',
         spanGaps: false, tension: 0.25, pointRadius: 1.5, borderWidth: 2,
@@ -1158,7 +1159,7 @@ new Chart(document.getElementById('chart-year-hits-log'), {
   const allIndexed = indexFrom(allSeries);
   if (allIndexed) {
     datasets.push({
-      label: 'All articles', data: allIndexed,
+      label: 'All texts', data: allIndexed,
       borderColor: '#b9c0c7', backgroundColor: '#b9c0c7',
       tension: 0.25, pointRadius: 1.5, borderWidth: 2,
     });
@@ -1477,7 +1478,7 @@ def main() -> None:
 
     print(f"Loading {CLEAN_CSV_PATH} …")
     clean_rows = load_csv(CLEAN_CSV_PATH)
-    print(f"  {len(clean_rows)} Textile Metaphor occurrence rows.")
+    print(f"  {len(clean_rows)} Textile metaphor occurrence rows.")
 
     print("Computing statistics …")
     stats = build_stats(clean_rows)
@@ -1489,7 +1490,7 @@ def main() -> None:
         journal_counts = load_journal_counts(JOURNAL_COUNTS_PATH)
         stats.update(compute_survey_coverage(clean_rows, journal_counts, stats["all_years"]))
         print(f"  Articles surveyed: {stats['articles_surveyed_total']}, "
-              f"Textile Metaphor rate: {stats['textile_metaphor_rate_pct']}%.")
+              f"Textile metaphor rate: {stats['textile_metaphor_rate_pct']}%.")
     else:
         print(f"  NOTE: {JOURNAL_COUNTS_PATH} not found — skipping survey-coverage statistics.")
         stats["articles_surveyed_total"]   = None
